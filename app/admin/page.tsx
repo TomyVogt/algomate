@@ -12,7 +12,7 @@ function getCookie(name: string): string | null {
 }
 
 export default function Admin() {
-  const [flags, setFlags] = useState<(Flag & { reporterProfile?: Profile; reportedProfile?: Profile })>([]);
+  const [flags, setFlags] = useState<Array<Flag & { reporterProfile?: Profile; reportedProfile?: Profile }>>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
   const router = useRouter();

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { verifyToken } from '@/lib/auth';
-import { getProfile, getMatchesForUser, createMatch, updateMatchStatus, getUserById } from '@/lib/db';
+import { getProfile, getMatchesForUser, createMatch, updateMatchStatus, createFlag } from '@/lib/db';
 import { calculateCompatibility, generateComparison } from '@/lib/compatibility';
 import { Profile, Match } from '@/lib/types';
 
@@ -24,6 +24,8 @@ export default function MatchingPlayground() {
   const [processing, setProcessing] = useState(false);
   const [allUsers, setAllUsers] = useState<Array<{ id: string; profile: Profile }>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [flagging, setFlagging] = useState(false);
+  const [flagComment, setFlagComment] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -96,6 +98,14 @@ export default function MatchingPlayground() {
     setMatches(updated);
     await loadNextComparison();
     setProcessing(false);
+  }
+
+  async function handleFlag() {
+    if (!userId || !otherUserId || !flagComment.trim()) return;
+    setFlagging(false);
+    await createFlag(userId, otherUserId, flagComment.trim());
+    setFlagComment('');
+    await handleAction('decline');
   }
 
   if (loading) return <div className="container"><p>Loading...</p></div>;
@@ -173,6 +183,27 @@ export default function MatchingPlayground() {
               <button className="btn-decline" onClick={() => handleAction('decline')} disabled={processing}>Decline</button>
               <button className="btn-secondary" onClick={() => handleAction('disregard')} disabled={processing}>Disregard</button>
             </div>
+
+            {!flagging ? (
+              <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <button className="btn-danger" style={{ fontSize: '0.8rem', padding: '6px 12px' }} onClick={() => setFlagging(true)}>Flag as Dangerous</button>
+              </div>
+            ) : (
+              <div style={{ marginTop: '16px', padding: '12px', background: '#fff5f5', borderRadius: '8px', border: '1px solid #e74c3c' }}>
+                <p style={{ fontWeight: '600', marginBottom: '8px' }}>Why are you flagging this user?</p>
+                <textarea
+                  value={flagComment}
+                  onChange={e => setFlagComment(e.target.value)}
+                  placeholder="Please describe why this user is dangerous (required)"
+                  rows={3}
+                  style={{ marginBottom: '8px' }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn-danger" style={{ fontSize: '0.85rem' }} onClick={handleFlag} disabled={!flagComment.trim()}>Submit Flag</button>
+                  <button className="btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => { setFlagging(false); setFlagComment(''); }}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

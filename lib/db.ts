@@ -1,6 +1,5 @@
 import initSqlJs, { Database } from 'sql.js';
 import { User, Profile, Match, Message, Flag } from './types';
-import { hashPassword } from './auth';
 
 let db: Database | null = null;
 
@@ -84,6 +83,7 @@ export async function saveDB(): Promise<void> {
 export async function createUser(email: string, password: string, role: User['role'] = 'user'): Promise<User> {
   const database = await initDB();
   const id = crypto.randomUUID();
+  const { hashPassword } = await import('./auth');
   const passwordHash = await hashPassword(password);
   const createdAt = Date.now();
 
@@ -105,16 +105,28 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   const database = await initDB();
   const result = database.exec('SELECT * FROM users WHERE email = ?', [email]);
   if (!result.length || !result[0].values.length) return null;
-  const [id, emailVal, passwordHash, role, createdAt] = result[0].values[0];
-  return { id, email: emailVal as string, passwordHash: passwordHash as string, role: role as User['role'], createdAt: createdAt as number };
+  const row = result[0].values[0];
+  return {
+    id: String(row[0] ?? ''),
+    email: String(row[1] ?? ''),
+    passwordHash: String(row[2] ?? ''),
+    role: (String(row[3] ?? 'user')) as User['role'],
+    createdAt: Number(row[4] ?? 0),
+  };
 }
 
 export async function getUserById(id: string): Promise<User | null> {
   const database = await initDB();
   const result = database.exec('SELECT * FROM users WHERE id = ?', [id]);
   if (!result.length || !result[0].values.length) return null;
-  const [uid, email, passwordHash, role, createdAt] = result[0].values[0];
-  return { id: uid as string, email: email as string, passwordHash: passwordHash as string, role: role as User['role'], createdAt: createdAt as number };
+  const row = result[0].values[0];
+  return {
+    id: String(row[0] ?? ''),
+    email: String(row[1] ?? ''),
+    passwordHash: String(row[2] ?? ''),
+    role: (String(row[3] ?? 'user')) as User['role'],
+    createdAt: Number(row[4] ?? 0),
+  };
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
@@ -126,22 +138,22 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   const obj: Record<string, unknown> = {};
   cols.forEach((col, i) => { obj[col] = row[i]; });
   return {
-    userId: obj.userId as string,
-    displayName: obj.displayName as string || '',
-    age: obj.age as number || 0,
-    bio: obj.bio as string || '',
-    interests: obj.interests ? JSON.parse(obj.interests as string) : [],
-    location: obj.location as string || '',
-    lookingFor: obj.lookingFor as string || '',
-    values: obj.values ? JSON.parse(obj.values as string) : [],
-    hobbies: obj.hobbies ? JSON.parse(obj.hobbies as string) : [],
+    userId: String(obj.userId ?? ''),
+    displayName: String(obj.displayName ?? ''),
+    age: Number(obj.age ?? 0),
+    bio: String(obj.bio ?? ''),
+    interests: obj.interests ? JSON.parse(String(obj.interests)) : [],
+    location: String(obj.location ?? ''),
+    lookingFor: String(obj.lookingFor ?? ''),
+    values: obj.values ? JSON.parse(String(obj.values)) : [],
+    hobbies: obj.hobbies ? JSON.parse(String(obj.hobbies)) : [],
   };
 }
 
 export async function updateProfile(userId: string, data: Partial<Profile>): Promise<void> {
   const database = await initDB();
   const fields: string[] = [];
-  const values: unknown[] = [];
+  const values: (string | number | null)[] = [];
 
   if (data.displayName !== undefined) { fields.push('displayName = ?'); values.push(data.displayName); }
   if (data.age !== undefined) { fields.push('age = ?'); values.push(data.age); }
@@ -165,12 +177,15 @@ export async function getMatchesForUser(userId: string): Promise<Match[]> {
     [userId, userId]
   );
   if (!result.length) return [];
-  return result[0].values.map((row) => {
-    const cols = result[0].columns;
-    const obj: Record<string, unknown> = {};
-    cols.forEach((col, i) => { obj[col] = row[i]; });
-    return obj as unknown as Match;
-  });
+  return result[0].values.map((row) => ({
+    id: String(row[0] ?? ''),
+    userA: String(row[1] ?? ''),
+    userB: String(row[2] ?? ''),
+    score: Number(row[3] ?? 0),
+    statusA: String(row[4] ?? 'pending') as Match['statusA'],
+    statusB: String(row[5] ?? 'pending') as Match['statusB'],
+    createdAt: Number(row[6] ?? 0),
+  }));
 }
 
 export async function createMatch(userA: string, userB: string, score: number): Promise<Match> {
@@ -187,17 +202,16 @@ export async function createMatch(userA: string, userB: string, score: number): 
 
 export async function updateMatchStatus(matchId: string, userId: string, status: Match['statusA']): Promise<void> {
   const database = await initDB();
-  const match = database.exec('SELECT * FROM matches WHERE id = ?', [matchId]);
+  const match = database.exec('SELECT userA, userB FROM matches WHERE id = ?', [matchId]);
   if (!match.length || !match[0].values.length) return;
 
   const row = match[0].values[0];
-  const cols = match[0].columns;
-  const obj: Record<string, unknown> = {};
-  cols.forEach((col, i) => { obj[col] = row[i]; });
+  const userA = String(row[0] ?? '');
+  const userB = String(row[1] ?? '');
 
-  if (obj.userA === userId) {
+  if (userA === userId) {
     database.run('UPDATE matches SET statusA = ? WHERE id = ?', [status, matchId]);
-  } else if (obj.userB === userId) {
+  } else if (userB === userId) {
     database.run('UPDATE matches SET statusB = ? WHERE id = ?', [status, matchId]);
   }
   await saveDB();
@@ -207,12 +221,13 @@ export async function getMessages(matchId: string): Promise<Message[]> {
   const database = await initDB();
   const result = database.exec('SELECT * FROM messages WHERE matchId = ? ORDER BY createdAt ASC', [matchId]);
   if (!result.length) return [];
-  return result[0].values.map((row) => {
-    const cols = result[0].columns;
-    const obj: Record<string, unknown> = {};
-    cols.forEach((col, i) => { obj[col] = row[i]; });
-    return obj as unknown as Message;
-  });
+  return result[0].values.map((row) => ({
+    id: String(row[0] ?? ''),
+    matchId: String(row[1] ?? ''),
+    senderId: String(row[2] ?? ''),
+    content: String(row[3] ?? ''),
+    createdAt: Number(row[4] ?? 0),
+  }));
 }
 
 export async function sendMessage(matchId: string, senderId: string, content: string): Promise<Message> {
@@ -243,12 +258,14 @@ export async function getFlags(): Promise<Flag[]> {
   const database = await initDB();
   const result = database.exec('SELECT * FROM flags WHERE resolved = 0 ORDER BY createdAt DESC');
   if (!result.length) return [];
-  return result[0].values.map((row) => {
-    const cols = result[0].columns;
-    const obj: Record<string, unknown> = {};
-    cols.forEach((col, i) => { obj[col] = row[i]; });
-    return { ...obj, resolved: Boolean(obj.resolved) } as unknown as Flag;
-  });
+  return result[0].values.map((row) => ({
+    id: String(row[0] ?? ''),
+    reporterId: String(row[1] ?? ''),
+    reportedUserId: String(row[2] ?? ''),
+    comment: String(row[3] ?? ''),
+    createdAt: Number(row[4] ?? 0),
+    resolved: Boolean(row[5]),
+  }));
 }
 
 export async function resolveFlag(flagId: string): Promise<void> {
