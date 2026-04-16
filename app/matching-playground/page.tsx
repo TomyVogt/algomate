@@ -26,6 +26,7 @@ export default function MatchingPlayground() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flagging, setFlagging] = useState(false);
   const [flagComment, setFlagComment] = useState('');
+  const [userRole, setUserRole] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function MatchingPlayground() {
       const payload = await verifyToken(token);
       if (!payload) { router.push('/login'); return; }
       setUserId(payload.userId);
+      setUserRole(payload.role);
 
       const profile = await getProfile(payload.userId);
       if (!profile || !profile.displayName) {
@@ -117,6 +119,7 @@ export default function MatchingPlayground() {
         <Link href="/profile">My Profile</Link>
         <Link href="/matching-playground" className="active">Matching Playground</Link>
         <Link href="/messages">Messages</Link>
+        {(userRole === 'admin' || userRole === 'mod') && <Link href="/admin">Admin</Link>}
       </nav>
       <div className="container" style={{ maxWidth: '700px' }}>
         <h1>Matching Playground</h1>

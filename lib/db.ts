@@ -43,6 +43,8 @@ export async function initDB(): Promise<Database> {
         score REAL,
         statusA TEXT DEFAULT 'pending',
         statusB TEXT DEFAULT 'pending',
+        profileRevealedA INTEGER DEFAULT 0,
+        profileRevealedB INTEGER DEFAULT 0,
         createdAt INTEGER,
         FOREIGN KEY (userA) REFERENCES users(id),
         FOREIGN KEY (userB) REFERENCES users(id)
@@ -184,7 +186,9 @@ export async function getMatchesForUser(userId: string): Promise<Match[]> {
     score: Number(row[3] ?? 0),
     statusA: String(row[4] ?? 'pending') as Match['statusA'],
     statusB: String(row[5] ?? 'pending') as Match['statusB'],
-    createdAt: Number(row[6] ?? 0),
+    profileRevealedA: Boolean(row[6]),
+    profileRevealedB: Boolean(row[7]),
+    createdAt: Number(row[8] ?? 0),
   }));
 }
 
@@ -193,11 +197,11 @@ export async function createMatch(userA: string, userB: string, score: number): 
   const id = crypto.randomUUID();
   const createdAt = Date.now();
   database.run(
-    'INSERT INTO matches (id, userA, userB, score, statusA, statusB, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [id, userA, userB, score, 'pending', 'pending', createdAt]
+    'INSERT INTO matches (id, userA, userB, score, statusA, statusB, profileRevealedA, profileRevealedB, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, userA, userB, score, 'pending', 'pending', 0, 0, createdAt]
   );
   await saveDB();
-  return { id, userA, userB, score, statusA: 'pending', statusB: 'pending', createdAt };
+  return { id, userA, userB, score, statusA: 'pending', statusB: 'pending', profileRevealedA: false, profileRevealedB: false, createdAt };
 }
 
 export async function updateMatchStatus(matchId: string, userId: string, status: Match['statusA']): Promise<void> {
@@ -272,6 +276,26 @@ export async function resolveFlag(flagId: string): Promise<void> {
   const database = await initDB();
   database.run('UPDATE flags SET resolved = 1 WHERE id = ?', [flagId]);
   await saveDB();
+}
+
+export async function revealProfile(matchId: string, userId: string): Promise<void> {
+  const database = await initDB();
+  const match = database.exec('SELECT userA, userB, profileRevealedA, profileRevealedB FROM matches WHERE id = ?', [matchId]);
+  if (!match.length || !match[0].values.length) return;
+  const row = match[0].values[0];
+  const userA = String(row[0] ?? '');
+  const userB = String(row[1] ?? '');
+  if (userA === userId) {
+    database.run('UPDATE matches SET profileRevealedA = 1 WHERE id = ?', [matchId]);
+  } else if (userB === userId) {
+    database.run('UPDATE matches SET profileRevealedB = 1 WHERE id = ?', [matchId]);
+  }
+  await saveDB();
+}
+
+export async function getMutualMatches(userId: string): Promise<Match[]> {
+  const all = await getMatchesForUser(userId);
+  return all.filter(m => m.statusA === 'match' && m.statusB === 'match');
 }
 
 export async function deleteUser(userId: string): Promise<void> {

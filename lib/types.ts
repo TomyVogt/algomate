@@ -25,6 +25,8 @@ export interface Match {
   score: number;
   statusA: 'pending' | 'match' | 'decline' | 'disregard';
   statusB: 'pending' | 'match' | 'decline' | 'disregard';
+  profileRevealedA: boolean;
+  profileRevealedB: boolean;
   createdAt: number;
 }
 
