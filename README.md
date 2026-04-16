@@ -46,26 +46,35 @@ A friend-finding app that shows you an **authentic comparison** between two peop
 - Users can **match**, **disregard**, or **decline** a connection
 - If both match: they can exchange messages AND agree on sharing their full profile information with each other
 
-## Planned Features
+## Implemented Features
 
-### Phase 1 — MVP
-- Sign up & Log in
-- Create and edit profile
-- **Matching Playground** (the heart of the app)
+### User Core
+- Sign up & Log in (email + password)
+- Create and edit profile (name, age, location, bio, interests, values, hobbies, looking for)
+- **Matching Playground** — the heart of the app with authentic comparisons
+- Compatibility score (1–10) based on algorithm
+- Match / Disregard / Decline decisions
 - Secure account deletion
 
-### Phase 2 — Community & Safety
-- Flag users as dangerous (with mandatory comment)
-- Admin panel to review flagged users
-- Admin and mod team access only (special sign-up)
+### Mutual Profile Reveal
+- When both users match, they can each choose to reveal their full profile
+- Both must agree before full profiles are shown to each other
+- Messages are available only after mutual match
+
+### Safety & Community
+- Flag users as dangerous (mandatory comment required)
+- Admin panel to review flagged users (admin/mod only)
 - Admins **cannot** access private chats
 
-### Phase 3 — Enhancement
+### Tech Stack
+- **Frontend:** Next.js with React, TypeScript
+- **Database:** sql.js (SQLite in browser via localStorage)
+- **Auth:** JWT tokens with bcrypt password hashing
+- **Future:** Firebase authentication planned
+
+## Planned Enhancements
+
 - Linguistic ice breakers
 - Conversation topic suggestions
 - Firebase authentication (for better security)
-
-## Tech Direction
-
-- Standard login for now, Firebase planned for later
-- Built with care for privacy and real human connection
+- Admin/mod special sign-up flow
