@@ -158,16 +158,16 @@ export default function Messages() {
             ) : (
               <>
                 {currentMatch?.otherProfile && (
-                  <div className="pb-4 mb-4" style={{ borderBottom: '1px solid #e5e5e5' }}>
+                  <div className="pb-4 mb-4 p-4 rounded-lg" style={{ borderBottom: '1px solid #e5e5e5', background: '#849fcf' }}>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <p className="font-bold text-lg">{currentMatch.otherProfile.displayName}</p>
-                        <p className="text-sm" style={{ color: '#666' }}>
+                        <p className="font-bold text-lg" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
+                        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
                           {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
                           Age {currentMatch.otherProfile.age}
                         </p>
                         {currentMatch.otherProfile.bio && (
-                          <p className="text-sm mt-2 line-clamp-2">{currentMatch.otherProfile.bio}</p>
+                          <p className="text-sm mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.9)' }}>{currentMatch.otherProfile.bio}</p>
                         )}
                       </div>
                       {!iRevealed && (
