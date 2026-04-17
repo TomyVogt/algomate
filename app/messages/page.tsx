@@ -73,10 +73,13 @@ export default function Messages() {
       const interval = setInterval(async () => {
         const msgs = await getMessages(selected);
         setMessages(msgs);
-      }, 2000);
+        if (userId) {
+          await loadMatches(userId);
+        }
+      }, 3000);
       return () => clearInterval(interval);
     }
-  }, [selected]);
+  }, [selected, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -96,10 +99,7 @@ export default function Messages() {
     setRevealing(true);
     await revealProfile(selected, userId);
     const enriched = await loadMatches(userId);
-    const current = enriched.find(m => m.id === selected);
-    if (current) {
-      setMatches(prev => prev.map(m => m.id === selected ? current : m));
-    }
+    setSelected(enriched.find(m => m.id === selected)?.id || null);
     setRevealing(false);
   }
 
@@ -134,19 +134,23 @@ export default function Messages() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4" style={{ height: '70vh' }}>
           <div className="card overflow-y-auto">
             {matches.length === 0 && <p style={{ color: '#666' }}>No mutual matches yet. Go to the Matching Playground!</p>}
-            {matches.map(m => (
-              <div
-                key={m.id}
-                onClick={() => selectMatch(m.id)}
-                className="p-3 rounded-lg cursor-pointer mb-1 transition-colors"
-                style={{ background: selected === m.id ? '#dbeafe' : 'transparent' }}
-              >
-                <p className="font-semibold">{m.otherProfile?.displayName || 'Loading...'}</p>
-                <p className="text-xs mt-1" style={{ color: '#666' }}>
-                  {bothRevealed ? '✓ Profiles revealed' : iRevealed ? '✓ You revealed yours' : '🔒 Profiles hidden'}
-                </p>
-              </div>
-            ))}
+            {matches.map(m => {
+              const matchBothRevealed = m.profileRevealedA && m.profileRevealedB;
+              const matchIRevealed = m.userA === userId ? m.profileRevealedA : m.profileRevealedB;
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => selectMatch(m.id)}
+                  className="p-3 rounded-lg cursor-pointer mb-1 transition-colors"
+                  style={{ background: selected === m.id ? '#dbeafe' : 'transparent' }}
+                >
+                  <p className="font-semibold">{m.otherProfile?.displayName || 'Loading...'}</p>
+                  <p className="text-xs mt-1" style={{ color: '#666' }}>
+                    {matchBothRevealed ? '✓ Profiles revealed' : matchIRevealed ? '✓ You revealed yours' : '🔒 Profiles hidden'}
+                  </p>
+                </div>
+              );
+            })}
           </div>
           <div className="card md:col-span-3 flex flex-col">
             {!selected ? (
