@@ -113,7 +113,12 @@ export default function MatchingPlayground() {
     setMatches(updated);
     const mutual = await getMutualMatches(userId);
     setMutualMatches(mutual);
-    await loadNextComparison();
+    setOtherUserId(null);
+    setOtherProfile(null);
+    setScore(null);
+    setComparison(null);
+    const users = await getAllUsersWithProfiles(userId);
+    setAllUsers(users);
     setProcessing(false);
   }
 
