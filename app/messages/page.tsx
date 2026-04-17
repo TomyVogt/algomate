@@ -165,8 +165,8 @@ export default function Messages() {
                       Age {currentMatch.otherProfile.age}
                     </p>
                     {!iRevealed && (
-                      <button className="btn-primary text-xs mt-3" onClick={handleRevealProfile} disabled={revealing}>
-                        {revealing ? 'Revealing...' : 'Disclose'}
+                      <button className="text-xs mt-3 px-3 py-2 rounded-lg font-medium" onClick={handleRevealProfile} disabled={revealing} style={{ background: messages.length > 0 ? '#90c367' : '#849fcf', color: 'white' }}>
+                        {revealing ? 'Revealing...' : 'Disclose Full Profile'}
                       </button>
                     )}
                     {bothRevealed && (
