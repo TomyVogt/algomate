@@ -4,10 +4,20 @@ export interface Profile {
   age: number;
   bio: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   friendSex: 'Male' | 'Female' | 'Non-Binary';
   friendMinAge: number;
   friendMaxAge: number;
   maxDistance: number;
+}
+
+export interface GeoLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+  country: string;
+  state?: string;
 }
 
 export interface User {

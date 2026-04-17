@@ -5,6 +5,7 @@ import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
 import { getProfile, updateProfile, deleteUser } from '@/lib/db';
 import { Profile } from '@/lib/types';
+import { geocodeSwissLocation } from '@/lib/geo';
 
 export default function ProfilePage() {
   const [displayName, setDisplayName] = useState('');
@@ -19,7 +20,9 @@ export default function ProfilePage() {
   const [userRole, setUserRole] = useState<string>('user');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [message, setMessage] = useState('');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -40,6 +43,9 @@ export default function ProfilePage() {
         setFriendMinAge(data.friendMinAge || 18);
         setFriendMaxAge(data.friendMaxAge || 99);
         setMaxDistance(data.maxDistance || 150);
+        if (data.latitude && data.longitude) {
+          setLocationCoords({ lat: data.latitude, lon: data.longitude });
+        }
       }
       setLoading(false);
     }
@@ -51,11 +57,32 @@ export default function ProfilePage() {
     if (!userId) return;
     setSaving(true);
     setMessage('');
+    setGeocoding(true);
+
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+
+    if (location.trim()) {
+      const geo = await geocodeSwissLocation(location.trim());
+      if (geo) {
+        latitude = geo.latitude;
+        longitude = geo.longitude;
+        setLocationCoords({ lat: geo.latitude, lon: geo.longitude });
+        setMessage('Profile saved! Location found: ' + geo.name);
+      } else {
+        setMessage('Profile saved! (Location not found - please check spelling)');
+      }
+    } else {
+      setLocationCoords(null);
+      setMessage('Profile saved!');
+    }
 
     await updateProfile(userId, {
       displayName: displayName || 'Anonymous',
       age,
       location,
+      latitude,
+      longitude,
       bio,
       friendSex,
       friendMinAge,
@@ -63,7 +90,7 @@ export default function ProfilePage() {
       maxDistance,
     });
 
-    setMessage('Profile saved!');
+    setGeocoding(false);
     setSaving(false);
   }
 
@@ -99,8 +126,13 @@ export default function ProfilePage() {
               <input type="number" className="input" value={age} onChange={e => setAge(parseInt(e.target.value) || 18)} min={13} max={120} />
             </div>
             <div className="form-group">
-              <label className="label">Location</label>
-              <input type="text" className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="City, Country" />
+              <label className="label">Location (Swiss city or village)</label>
+              <input type="text" className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Zurich, Bern, Geneva, Basel, etc." />
+              {locationCoords && (
+                <p className="text-sm mt-1" style={{ color: '#10B981' }}>
+                  Location found: {locationCoords.lat.toFixed(4)}, {locationCoords.lon.toFixed(4)}
+                </p>
+              )}
             </div>
             <div className="form-group">
               <label className="label">Bio — Tell others about yourself</label>
@@ -128,7 +160,9 @@ export default function ProfilePage() {
               <label className="label">Max Distance (km)</label>
               <input type="number" className="input" value={maxDistance} onChange={e => setMaxDistance(parseInt(e.target.value) || 150)} min={1} max={50000} />
             </div>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
+            <button type="submit" className="btn-primary" disabled={saving || geocoding}>
+              {saving || geocoding ? 'Saving & Finding Location...' : 'Save Profile'}
+            </button>
           </form>
         </div>
         <div className="card border-2 mt-6" style={{ borderColor: '#EF4444', backgroundColor: '#fef2f2' }}>

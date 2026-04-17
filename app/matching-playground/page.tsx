@@ -145,7 +145,7 @@ export default function MatchingPlayground() {
                 <p className="font-semibold mb-2">How you compare</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="p-2 rounded" style={{ background: '#f3f4f6' }}>
-                    <span className="font-medium">Age Difference:</span> {comparison.ageDifference} years
+                    <span className="font-medium">Distance:</span> {comparison.distance !== null ? `${comparison.distance} km` : 'Unknown'}
                   </div>
                   <div className="p-2 rounded" style={{ background: '#f3f4f6' }}>
                     <span className="font-medium">Bio Overlap:</span> {comparison.bioOverlap} words

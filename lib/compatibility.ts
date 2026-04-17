@@ -1,4 +1,5 @@
 import { Profile } from './types';
+import { calculateDistance } from './geo';
 
 export function calculateCompatibility(profileA: Profile, profileB: Profile): number {
   let score = 0;
@@ -7,7 +8,7 @@ export function calculateCompatibility(profileA: Profile, profileB: Profile): nu
   const weights = {
     agePreference: 3,
     sexPreference: 3,
-    location: 2,
+    distance: 3,
     bio: 2,
     ageDifference: 2,
   };
@@ -20,10 +21,9 @@ export function calculateCompatibility(profileA: Profile, profileB: Profile): nu
   const sexPrefScore = calculateSexPreferenceScore(profileA, profileB);
   score += sexPrefScore * weights.sexPreference;
 
-  maxScore += weights.location;
-  if (profileA.location && profileB.location && profileA.location.toLowerCase() === profileB.location.toLowerCase()) {
-    score += weights.location;
-  }
+  maxScore += weights.distance;
+  const distanceScore = calculateDistanceScore(profileA, profileB);
+  score += distanceScore * weights.distance;
 
   maxScore += weights.bio;
   if (profileA.bio && profileB.bio) {
@@ -55,7 +55,37 @@ function calculateSexPreferenceScore(profileA: Profile, profileB: Profile): numb
   return 1;
 }
 
+function calculateDistanceScore(profileA: Profile, profileB: Profile): number {
+  if (!profileA.latitude || !profileA.longitude || !profileB.latitude || !profileB.longitude) {
+    return 1;
+  }
+
+  const distance = calculateDistance(
+    profileA.latitude,
+    profileA.longitude,
+    profileB.latitude,
+    profileB.longitude
+  );
+
+  const maxDist = Math.min(profileA.maxDistance, profileB.maxDistance);
+
+  if (distance <= maxDist) return 2;
+  if (distance <= maxDist * 2) return 1;
+  return 0;
+}
+
 export function generateComparison(profileA: Profile, profileB: Profile) {
+  let distance: number | null = null;
+
+  if (profileA.latitude && profileA.longitude && profileB.latitude && profileB.longitude) {
+    distance = calculateDistance(
+      profileA.latitude,
+      profileA.longitude,
+      profileB.latitude,
+      profileB.longitude
+    );
+  }
+
   return {
     displayName: { a: profileA.displayName, b: profileB.displayName },
     age: { a: profileA.age, b: profileB.age },
@@ -69,6 +99,7 @@ export function generateComparison(profileA: Profile, profileB: Profile) {
     maxDistance: { a: profileA.maxDistance, b: profileB.maxDistance },
     ageDifference: Math.abs(profileA.age - profileB.age),
     bioOverlap: calculateBioOverlap(profileA.bio, profileB.bio),
+    distance,
   };
 }
 
