@@ -152,32 +152,64 @@ export default function Messages() {
               );
             })}
           </div>
-          <div className="card md:col-span-3 flex flex-col">
+          <div className="card md:col-span-3 flex flex-row">
             {!selected ? (
               <p className="text-center mt-12" style={{ color: '#666' }}>Select a conversation to start chatting</p>
             ) : (
               <>
                 {currentMatch?.otherProfile && (
-                  <div className="pb-4 mb-4 p-4 rounded-lg" style={{ borderBottom: '1px solid #e5e5e5', background: '#849fcf' }}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-bold text-lg" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
-                        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                          {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
-                          Age {currentMatch.otherProfile.age}
-                        </p>
-                        {currentMatch.otherProfile.bio && (
-                          <p className="text-sm mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.9)' }}>{currentMatch.otherProfile.bio}</p>
-                        )}
-                      </div>
-                      {!iRevealed && (
-                        <button className="btn-primary text-sm ml-3" onClick={handleRevealProfile} disabled={revealing}>
-                          {revealing ? 'Revealing...' : 'Disclose Full Profile'}
+                  <div className="w-48 flex-shrink-0 p-4 rounded-l-lg flex flex-col items-center justify-center" style={{ background: messages.length > 0 ? '#849fcf' : '#90c367' }}>
+                    <p className="font-bold text-lg text-center" style={{ color: messages.length > 0 ? 'white' : 'white' }}>{currentMatch.otherProfile.displayName}</p>
+                    <p className="text-sm text-center mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                      {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
+                      Age {currentMatch.otherProfile.age}
+                    </p>
+                    {!iRevealed && (
+                      <button className="btn-primary text-xs mt-3" onClick={handleRevealProfile} disabled={revealing}>
+                        {revealing ? 'Revealing...' : 'Disclose'}
+                      </button>
+                    )}
+                    {bothRevealed && (
+                      <span className="text-xs mt-2" style={{ color: 'white' }}>✓ Profiles Shared</span>
+                    )}
+                    {!bothRevealed && iRevealed && (
+                      <span className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.7)' }}>Waiting...</span>
+                    )}
+                    <div className="mt-3">
+                      {!reporting && !reportSent && (
+                        <button
+                          className="text-xs px-2 py-1 rounded border"
+                          style={{ borderColor: '#EF4444', color: '#EF4444', background: 'white' }}
+                          onClick={() => setReporting(true)}
+                        >
+                          Report
                         </button>
                       )}
+                      {reportSent && (
+                        <span className="text-xs" style={{ color: 'white' }}>✓ Sent</span>
+                      )}
                     </div>
+                    {reporting && (
+                      <div className="mt-2 p-2 rounded text-xs" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
+                        <p className="mb-1" style={{ color: '#EF4444' }}>Report (50+ chars):</p>
+                        <textarea
+                          className="input bg-white w-full text-xs"
+                          value={reportComment}
+                          onChange={e => setReportComment(e.target.value)}
+                          rows={2}
+                        />
+                        <div className="flex gap-1 mt-1">
+                          <button className="btn-danger text-xs" onClick={handleReport} disabled={reportComment.trim().length < 50}>Send</button>
+                          <button className="btn-secondary text-xs" onClick={() => { setReporting(false); setReportComment(''); }}>×</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="flex-1 flex flex-col p-4">
+                  <div className="mb-3 p-3 rounded-lg" style={{ background: bothRevealed ? '#dbeafe' : 'white', border: bothRevealed ? '1px solid #849fcf' : '1px solid #e5e5e5' }}>
                     {!bothRevealed && (
-                      <div className="mt-3 p-3 rounded-lg" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
+                      <div className="mb-2">
                         {!iRevealed ? (
                           <p className="text-sm">You have not revealed your profile yet. Once you both reveal, you will see each other&apos;s full profiles.</p>
                         ) : (
@@ -185,82 +217,38 @@ export default function Messages() {
                         )}
                       </div>
                     )}
-                    {bothRevealed && (
-                      <div className="mt-3 p-3 rounded-lg" style={{ background: '#dcfce7' }}>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="font-medium">Bio:</span> {currentMatch.otherProfile.bio || 'No bio'}</div>
-                          <div><span className="font-medium">Looking for:</span> {currentMatch.otherProfile.friendSex} friends, age {currentMatch.otherProfile.friendMinAge}-{currentMatch.otherProfile.friendMaxAge}</div>
-                          <div><span className="font-medium">Location:</span> {currentMatch.otherProfile.location || 'Unknown'}</div>
-                          <div><span className="font-medium">Max Distance:</span> {currentMatch.otherProfile.maxDistance} km</div>
-                        </div>
-                      </div>
-                    )}
-                    <div className="mt-3 flex gap-2">
-                      {!reporting && !reportSent && (
-                        <button
-                          className="text-sm px-3 py-1 rounded border hover:bg-gray-50"
-                          style={{ borderColor: '#EF4444', color: '#EF4444' }}
-                          onClick={() => setReporting(true)}
-                        >
-                          Report
-                        </button>
-                      )}
-                      {reportSent && (
-                        <span className="text-sm" style={{ color: '#10B981' }}>✓ Report sent to admin</span>
-                      )}
-                    </div>
-                    {reporting && (
-                      <div className="mt-3 p-3 rounded-lg" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
-                        <p className="text-sm font-medium mb-2" style={{ color: '#EF4444' }}>Report this user (min 50 characters)</p>
-                        <textarea
-                          className="input bg-white w-full"
-                          value={reportComment}
-                          onChange={e => setReportComment(e.target.value)}
-                          placeholder="Describe why you are reporting this user..."
-                          rows={3}
-                        />
-                        <p className="text-xs mt-1" style={{ color: '#666' }}>{reportComment.length}/50 characters minimum</p>
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            className="btn-danger text-sm"
-                            onClick={handleReport}
-                            disabled={reportComment.trim().length < 50}
-                          >
-                            Send Report
-                          </button>
-                          <button
-                            className="btn-secondary text-sm"
-                            onClick={() => { setReporting(false); setReportComment(''); }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                    {bothRevealed && currentMatch.otherProfile?.bio && (
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="font-medium">Bio:</span> {currentMatch.otherProfile.bio || 'No bio'}</div>
+                        <div><span className="font-medium">Looking for:</span> {currentMatch.otherProfile.friendSex} friends, age {currentMatch.otherProfile.friendMinAge}-{currentMatch.otherProfile.friendMaxAge}</div>
+                        <div><span className="font-medium">Location:</span> {currentMatch.otherProfile.location || 'Unknown'}</div>
+                        <div><span className="font-medium">Max Distance:</span> {currentMatch.otherProfile.maxDistance} km</div>
                       </div>
                     )}
                   </div>
-                )}
-                <div className="flex-1 overflow-y-auto mb-4 space-y-2">
-                  {messages.length === 0 && (
-                    <p className="text-center text-sm" style={{ color: '#666' }}>No messages yet. Say hello!</p>
-                  )}
-                  {messages.map(msg => (
-                    <div key={msg.id} className="flex" style={{ justifyContent: msg.senderId === userId ? 'flex-end' : 'flex-start' }}>
-                      <span className="inline-block px-4 py-2 rounded-xl max-w-xs" style={{ background: msg.senderId === userId ? '#90c367' : '#e5e5e5', color: msg.senderId === userId ? 'white' : '#111' }}>
-                        {msg.content}
-                      </span>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
+                  <div className="flex-1 overflow-y-auto mb-3 space-y-2">
+                    {messages.length === 0 && (
+                      <p className="text-center text-sm" style={{ color: '#666' }}>No messages yet. Say hello!</p>
+                    )}
+                    {messages.map(msg => (
+                      <div key={msg.id} className="flex" style={{ justifyContent: msg.senderId === userId ? 'flex-end' : 'flex-start' }}>
+                        <span className="inline-block px-4 py-2 rounded-xl max-w-xs" style={{ background: msg.senderId === userId ? '#90c367' : '#e5e5e5', color: msg.senderId === userId ? 'white' : '#111' }}>
+                          {msg.content}
+                        </span>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                  <form onSubmit={handleSend} className="flex gap-2">
+                    <input
+                      className="input flex-1"
+                      value={newMessage}
+                      onChange={e => setNewMessage(e.target.value)}
+                      placeholder="Type a message..."
+                    />
+                    <button type="submit" className="btn-primary">Send</button>
+                  </form>
                 </div>
-                <form onSubmit={handleSend} className="flex gap-2">
-                  <input
-                    className="input flex-1"
-                    value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                  />
-                  <button type="submit" className="btn-primary">Send</button>
-                </form>
               </>
             )}
           </div>
