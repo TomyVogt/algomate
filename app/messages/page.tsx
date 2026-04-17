@@ -29,6 +29,7 @@ export default function Messages() {
   const [reporting, setReporting] = useState(false);
   const [reportComment, setReportComment] = useState('');
   const [reportSent, setReportSent] = useState(false);
+  const [showProfileInfo, setShowProfileInfo] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -66,6 +67,7 @@ export default function Messages() {
     setSelected(matchId);
     setReportSent(false);
     setReportComment('');
+    setShowProfileInfo(false);
     const msgs = await getMessages(matchId);
     setMessages(msgs);
     if (userId) {
@@ -171,40 +173,42 @@ export default function Messages() {
             ) : (
               <>
                 {currentMatch?.otherProfile && (
-                  <div className="w-48 flex-shrink-0 p-4 rounded-l-lg flex flex-col items-center justify-center" style={{ background: '#90c367' }}>
-                    <p className="font-bold text-lg text-center" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
-                    <p className="text-sm text-center mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                      {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
-                      Age {currentMatch.otherProfile.age}
-                    </p>
-                    {!iRevealed && (
-                      <button className="text-xs mt-3 px-3 py-2 rounded-lg font-medium" onClick={handleRevealProfile} disabled={revealing} style={{ background: messages.length > 0 ? '#90c367' : '#849fcf', color: 'white' }}>
-                        {revealing ? 'Revealing...' : 'Disclose Full Profile'}
-                      </button>
-                    )}
-                    {bothRevealed && (
-                      <span className="text-xs mt-2" style={{ color: 'white' }}>✓ Profiles Shared</span>
-                    )}
-                    {!bothRevealed && iRevealed && (
-                      <span className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.7)' }}>Waiting...</span>
-                    )}
-                    <div className="mt-3">
-                      {!reporting && !reportSent && (
-                        <button
-                          className="text-xs px-2 py-1 rounded border"
-                          style={{ borderColor: '#EF4444', color: '#EF4444', background: 'white' }}
-                          onClick={() => setReporting(true)}
-                        >
-                          Report
+                  <div className="w-48 flex-shrink-0 flex flex-col" style={{ background: '#90c367' }}>
+                    <div className="p-4 flex flex-col items-center justify-center flex-1">
+                      <p className="font-bold text-lg text-center" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
+                      <p className="text-sm text-center mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                        {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
+                        Age {currentMatch.otherProfile.age}
+                      </p>
+                      {!iRevealed && (
+                        <button className="text-xs mt-3 px-3 py-2 rounded-lg font-medium" onClick={handleRevealProfile} disabled={revealing} style={{ background: 'white', color: '#166534' }}>
+                          {revealing ? 'Revealing...' : 'Disclose Full Profile'}
                         </button>
                       )}
-                      {reportSent && (
-                        <span className="text-xs" style={{ color: 'white' }}>✓ Sent</span>
+                      {bothRevealed && (
+                        <span className="text-xs mt-2" style={{ color: 'white' }}>✓ Profiles Shared</span>
                       )}
+                      {!bothRevealed && iRevealed && (
+                        <span className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.7)' }}>Waiting...</span>
+                      )}
+                      <div className="mt-3">
+                        {!reporting && !reportSent && (
+                          <button
+                            className="text-xs px-2 py-1 rounded border"
+                            style={{ borderColor: 'white', color: 'white', background: 'transparent' }}
+                            onClick={() => setReporting(true)}
+                          >
+                            Report
+                          </button>
+                        )}
+                        {reportSent && (
+                          <span className="text-xs" style={{ color: 'white' }}>✓ Sent</span>
+                        )}
+                      </div>
                     </div>
                     {reporting && (
-                      <div className="mt-2 p-2 rounded text-xs" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
-                        <p className="mb-1" style={{ color: '#EF4444' }}>Report (50+ chars):</p>
+                      <div className="p-3 mx-2 mb-2 rounded text-xs" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
+                        <p className="mb-1 font-medium" style={{ color: '#EF4444' }}>Report (50+ chars):</p>
                         <textarea
                           className="input bg-white w-full text-xs"
                           value={reportComment}
@@ -219,27 +223,26 @@ export default function Messages() {
                     )}
                   </div>
                 )}
-                <div className="flex-1 flex flex-col p-4">
-                  <div className="mb-3 p-3 rounded-lg" style={{ background: bothRevealed ? '#dbeafe' : 'white', border: bothRevealed ? '1px solid #849fcf' : '1px solid #e5e5e5' }}>
-                    {!bothRevealed && (
-                      <div className="mb-2">
-                        {!iRevealed ? (
-                          <p className="text-sm">You have not revealed your profile yet. Once you both reveal, you will see each other&apos;s full profiles.</p>
-                        ) : (
-                          <p className="text-sm">Waiting for the other person to reveal their profile...</p>
-                        )}
+                <div className="flex-1 flex flex-col">
+                  {bothRevealed && (
+                    <div className="p-3 border-b cursor-pointer hover:bg-gray-50" style={{ borderColor: '#e5e5e5' }} onClick={() => setShowProfileInfo(!showProfileInfo)}>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium" style={{ color: '#166534' }}>Full Profile Info</span>
+                        <span style={{ color: '#666' }}>{showProfileInfo ? '▲' : '▼'}</span>
                       </div>
-                    )}
-                    {bothRevealed && currentMatch.otherProfile?.bio && (
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><span className="font-medium">Bio:</span> {currentMatch.otherProfile.bio || 'No bio'}</div>
-                        <div><span className="font-medium">Looking for:</span> {currentMatch.otherProfile.friendSex} friends, age {currentMatch.otherProfile.friendMinAge}-{currentMatch.otherProfile.friendMaxAge}</div>
-                        <div><span className="font-medium">Location:</span> {currentMatch.otherProfile.location || 'Unknown'}</div>
-                        <div><span className="font-medium">Max Distance:</span> {currentMatch.otherProfile.maxDistance} km</div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 overflow-y-auto mb-3 space-y-2">
+                      {showProfileInfo && (
+                        <div className="mt-2 p-3 rounded-lg" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div><span className="font-medium">Bio:</span> {currentMatch.otherProfile?.bio || 'No bio'}</div>
+                            <div><span className="font-medium">Looking for:</span> {currentMatch.otherProfile?.friendSex} friends, age {currentMatch.otherProfile?.friendMinAge}-{currentMatch.otherProfile?.friendMaxAge}</div>
+                            <div><span className="font-medium">Location:</span> {currentMatch.otherProfile?.location || 'Unknown'}</div>
+                            <div><span className="font-medium">Max Distance:</span> {currentMatch.otherProfile?.maxDistance} km</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {messages.length === 0 && (
                       <p className="text-center text-sm" style={{ color: '#666' }}>No messages yet. Say hello!</p>
                     )}
@@ -252,14 +255,16 @@ export default function Messages() {
                     ))}
                     <div ref={messagesEndRef} />
                   </div>
-                  <form onSubmit={handleSend} className="flex gap-2">
-                    <input
-                      className="input flex-1"
-                      value={newMessage}
-                      onChange={e => setNewMessage(e.target.value)}
-                      placeholder="Type a message..."
-                    />
-                    <button type="submit" className="btn-primary">Send</button>
+                  <form onSubmit={handleSend} className="p-4 border-t" style={{ borderColor: '#e5e5e5' }}>
+                    <div className="flex gap-2">
+                      <input
+                        className="input flex-1"
+                        value={newMessage}
+                        onChange={e => setNewMessage(e.target.value)}
+                        placeholder="Type a message..."
+                      />
+                      <button type="submit" className="btn-primary">Send</button>
+                    </div>
                   </form>
                 </div>
               </>
