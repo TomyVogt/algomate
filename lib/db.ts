@@ -1,296 +1,178 @@
-import initSqlJs, { Database } from 'sql.js';
 import { User, Profile, Match, Message, Flag } from './types';
 
-let db: Database | null = null;
-
-export async function initDB(): Promise<Database> {
-  if (db) return db;
-
-  const SQL = await initSqlJs({
-    locateFile: (file) => `https://sql.js.org/dist/${file}`,
-  });
-
-  const saved = typeof window !== 'undefined' ? localStorage.getItem('algomate_db') : null;
-  if (saved) {
-    const data = Uint8Array.from(atob(saved), (c) => c.charCodeAt(0));
-    db = new SQL.Database(data);
-  } else {
-    db = new SQL.Database();
-    db.run(`
-      CREATE TABLE users (
-        id TEXT PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL,
-        passwordHash TEXT NOT NULL,
-        role TEXT DEFAULT 'user',
-        createdAt INTEGER
-      );
-      CREATE TABLE profiles (
-        userId TEXT PRIMARY KEY,
-        displayName TEXT,
-        age INTEGER,
-        bio TEXT,
-        interests TEXT,
-        location TEXT,
-        lookingFor TEXT,
-        values TEXT,
-        hobbies TEXT,
-        FOREIGN KEY (userId) REFERENCES users(id)
-      );
-      CREATE TABLE matches (
-        id TEXT PRIMARY KEY,
-        userA TEXT NOT NULL,
-        userB TEXT NOT NULL,
-        score REAL,
-        statusA TEXT DEFAULT 'pending',
-        statusB TEXT DEFAULT 'pending',
-        profileRevealedA INTEGER DEFAULT 0,
-        profileRevealedB INTEGER DEFAULT 0,
-        createdAt INTEGER,
-        FOREIGN KEY (userA) REFERENCES users(id),
-        FOREIGN KEY (userB) REFERENCES users(id)
-      );
-      CREATE TABLE messages (
-        id TEXT PRIMARY KEY,
-        matchId TEXT NOT NULL,
-        senderId TEXT NOT NULL,
-        content TEXT NOT NULL,
-        createdAt INTEGER,
-        FOREIGN KEY (matchId) REFERENCES matches(id),
-        FOREIGN KEY (senderId) REFERENCES users(id)
-      );
-      CREATE TABLE flags (
-        id TEXT PRIMARY KEY,
-        reporterId TEXT NOT NULL,
-        reportedUserId TEXT NOT NULL,
-        comment TEXT NOT NULL,
-        createdAt INTEGER,
-        resolved INTEGER DEFAULT 0,
-        FOREIGN KEY (reporterId) REFERENCES users(id),
-        FOREIGN KEY (reportedUserId) REFERENCES users(id)
-      );
-    `);
-    await saveDB();
-  }
-
-  return db;
+function getStore<T>(key: string): T[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : [];
 }
 
-export async function saveDB(): Promise<void> {
-  if (!db || typeof window === 'undefined') return;
-  const data = db.export();
-  const base64 = btoa(String.fromCharCode(...data));
-  localStorage.setItem('algomate_db', base64);
+function setStore<T>(key: string, data: T[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+const USERS = 'algomate_users';
+const PROFILES = 'algomate_profiles';
+const MATCHES = 'algomate_matches';
+const MESSAGES = 'algomate_messages';
+const FLAGS = 'algomate_flags';
+
+export async function initDB(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (!localStorage.getItem(USERS)) setStore(USERS, []);
+  if (!localStorage.getItem(PROFILES)) setStore(PROFILES, []);
+  if (!localStorage.getItem(MATCHES)) setStore(MATCHES, []);
+  if (!localStorage.getItem(MESSAGES)) setStore(MESSAGES, []);
+  if (!localStorage.getItem(FLAGS)) setStore(FLAGS, []);
 }
 
 export async function createUser(email: string, password: string, role: User['role'] = 'user'): Promise<User> {
-  const database = await initDB();
-  const id = crypto.randomUUID();
+  await initDB();
+  const users = getStore<User>(USERS);
+  const existing = users.find(u => u.email === email);
+  if (existing) throw new Error('Email already exists');
+
   const { hashPassword } = await import('./auth');
   const passwordHash = await hashPassword(password);
-  const createdAt = Date.now();
+  const user: User = {
+    id: crypto.randomUUID(),
+    email,
+    passwordHash,
+    role,
+    createdAt: Date.now(),
+  };
+  users.push(user);
+  setStore(USERS, users);
 
-  database.run(
-    'INSERT INTO users (id, email, passwordHash, role, createdAt) VALUES (?, ?, ?, ?, ?)',
-    [id, email, passwordHash, role, createdAt]
-  );
+  const profiles = getStore<Profile>(PROFILES);
+  profiles.push({ userId: user.id, displayName: '', age: 0, bio: '', interests: [], location: '', lookingFor: '', values: [], hobbies: [] });
+  setStore(PROFILES, profiles);
 
-  database.run(
-    'INSERT INTO profiles (userId) VALUES (?)',
-    [id]
-  );
-
-  await saveDB();
-  return { id, email, passwordHash, role, createdAt };
+  return user;
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
-  const database = await initDB();
-  const result = database.exec('SELECT * FROM users WHERE email = ?', [email]);
-  if (!result.length || !result[0].values.length) return null;
-  const row = result[0].values[0];
-  return {
-    id: String(row[0] ?? ''),
-    email: String(row[1] ?? ''),
-    passwordHash: String(row[2] ?? ''),
-    role: (String(row[3] ?? 'user')) as User['role'],
-    createdAt: Number(row[4] ?? 0),
-  };
+  await initDB();
+  const users = getStore<User>(USERS);
+  return users.find(u => u.email === email) || null;
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-  const database = await initDB();
-  const result = database.exec('SELECT * FROM users WHERE id = ?', [id]);
-  if (!result.length || !result[0].values.length) return null;
-  const row = result[0].values[0];
-  return {
-    id: String(row[0] ?? ''),
-    email: String(row[1] ?? ''),
-    passwordHash: String(row[2] ?? ''),
-    role: (String(row[3] ?? 'user')) as User['role'],
-    createdAt: Number(row[4] ?? 0),
-  };
+  await initDB();
+  const users = getStore<User>(USERS);
+  return users.find(u => u.id === id) || null;
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const database = await initDB();
-  const result = database.exec('SELECT * FROM profiles WHERE userId = ?', [userId]);
-  if (!result.length || !result[0].values.length) return null;
-  const row = result[0].values[0];
-  const cols = result[0].columns;
-  const obj: Record<string, unknown> = {};
-  cols.forEach((col, i) => { obj[col] = row[i]; });
-  return {
-    userId: String(obj.userId ?? ''),
-    displayName: String(obj.displayName ?? ''),
-    age: Number(obj.age ?? 0),
-    bio: String(obj.bio ?? ''),
-    interests: obj.interests ? JSON.parse(String(obj.interests)) : [],
-    location: String(obj.location ?? ''),
-    lookingFor: String(obj.lookingFor ?? ''),
-    values: obj.values ? JSON.parse(String(obj.values)) : [],
-    hobbies: obj.hobbies ? JSON.parse(String(obj.hobbies)) : [],
-  };
+  await initDB();
+  const profiles = getStore<Profile>(PROFILES);
+  return profiles.find(p => p.userId === userId) || null;
 }
 
 export async function updateProfile(userId: string, data: Partial<Profile>): Promise<void> {
-  const database = await initDB();
-  const fields: string[] = [];
-  const values: (string | number | null)[] = [];
-
-  if (data.displayName !== undefined) { fields.push('displayName = ?'); values.push(data.displayName); }
-  if (data.age !== undefined) { fields.push('age = ?'); values.push(data.age); }
-  if (data.bio !== undefined) { fields.push('bio = ?'); values.push(data.bio); }
-  if (data.interests !== undefined) { fields.push('interests = ?'); values.push(JSON.stringify(data.interests)); }
-  if (data.location !== undefined) { fields.push('location = ?'); values.push(data.location); }
-  if (data.lookingFor !== undefined) { fields.push('lookingFor = ?'); values.push(data.lookingFor); }
-  if (data.values !== undefined) { fields.push('values = ?'); values.push(JSON.stringify(data.values)); }
-  if (data.hobbies !== undefined) { fields.push('hobbies = ?'); values.push(JSON.stringify(data.hobbies)); }
-
-  if (!fields.length) return;
-  values.push(userId);
-  database.run(`UPDATE profiles SET ${fields.join(', ')} WHERE userId = ?`, values);
-  await saveDB();
+  await initDB();
+  const profiles = getStore<Profile>(PROFILES);
+  const idx = profiles.findIndex(p => p.userId === userId);
+  if (idx === -1) return;
+  profiles[idx] = { ...profiles[idx], ...data };
+  setStore(PROFILES, profiles);
 }
 
 export async function getMatchesForUser(userId: string): Promise<Match[]> {
-  const database = await initDB();
-  const result = database.exec(
-    'SELECT * FROM matches WHERE userA = ? OR userB = ? ORDER BY createdAt DESC',
-    [userId, userId]
-  );
-  if (!result.length) return [];
-  return result[0].values.map((row) => ({
-    id: String(row[0] ?? ''),
-    userA: String(row[1] ?? ''),
-    userB: String(row[2] ?? ''),
-    score: Number(row[3] ?? 0),
-    statusA: String(row[4] ?? 'pending') as Match['statusA'],
-    statusB: String(row[5] ?? 'pending') as Match['statusB'],
-    profileRevealedA: Boolean(row[6]),
-    profileRevealedB: Boolean(row[7]),
-    createdAt: Number(row[8] ?? 0),
-  }));
+  await initDB();
+  const matches = getStore<Match>(MATCHES);
+  return matches.filter(m => m.userA === userId || m.userB === userId).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function createMatch(userA: string, userB: string, score: number): Promise<Match> {
-  const database = await initDB();
-  const id = crypto.randomUUID();
-  const createdAt = Date.now();
-  database.run(
-    'INSERT INTO matches (id, userA, userB, score, statusA, statusB, profileRevealedA, profileRevealedB, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, userA, userB, score, 'pending', 'pending', 0, 0, createdAt]
-  );
-  await saveDB();
-  return { id, userA, userB, score, statusA: 'pending', statusB: 'pending', profileRevealedA: false, profileRevealedB: false, createdAt };
+  await initDB();
+  const matches = getStore<Match>(MATCHES);
+  const match: Match = {
+    id: crypto.randomUUID(),
+    userA,
+    userB,
+    score,
+    statusA: 'pending',
+    statusB: 'pending',
+    profileRevealedA: false,
+    profileRevealedB: false,
+    createdAt: Date.now(),
+  };
+  matches.push(match);
+  setStore(MATCHES, matches);
+  return match;
 }
 
 export async function updateMatchStatus(matchId: string, userId: string, status: Match['statusA']): Promise<void> {
-  const database = await initDB();
-  const match = database.exec('SELECT userA, userB FROM matches WHERE id = ?', [matchId]);
-  if (!match.length || !match[0].values.length) return;
-
-  const row = match[0].values[0];
-  const userA = String(row[0] ?? '');
-  const userB = String(row[1] ?? '');
-
-  if (userA === userId) {
-    database.run('UPDATE matches SET statusA = ? WHERE id = ?', [status, matchId]);
-  } else if (userB === userId) {
-    database.run('UPDATE matches SET statusB = ? WHERE id = ?', [status, matchId]);
-  }
-  await saveDB();
+  await initDB();
+  const matches = getStore<Match>(MATCHES);
+  const idx = matches.findIndex(m => m.id === matchId);
+  if (idx === -1) return;
+  if (matches[idx].userA === userId) matches[idx].statusA = status;
+  else if (matches[idx].userB === userId) matches[idx].statusB = status;
+  setStore(MATCHES, matches);
 }
 
 export async function getMessages(matchId: string): Promise<Message[]> {
-  const database = await initDB();
-  const result = database.exec('SELECT * FROM messages WHERE matchId = ? ORDER BY createdAt ASC', [matchId]);
-  if (!result.length) return [];
-  return result[0].values.map((row) => ({
-    id: String(row[0] ?? ''),
-    matchId: String(row[1] ?? ''),
-    senderId: String(row[2] ?? ''),
-    content: String(row[3] ?? ''),
-    createdAt: Number(row[4] ?? 0),
-  }));
+  await initDB();
+  const messages = getStore<Message>(MESSAGES);
+  return messages.filter(m => m.matchId === matchId).sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export async function sendMessage(matchId: string, senderId: string, content: string): Promise<Message> {
-  const database = await initDB();
-  const id = crypto.randomUUID();
-  const createdAt = Date.now();
-  database.run(
-    'INSERT INTO messages (id, matchId, senderId, content, createdAt) VALUES (?, ?, ?, ?, ?)',
-    [id, matchId, senderId, content, createdAt]
-  );
-  await saveDB();
-  return { id, matchId, senderId, content, createdAt };
+  await initDB();
+  const messages = getStore<Message>(MESSAGES);
+  const msg: Message = {
+    id: crypto.randomUUID(),
+    matchId,
+    senderId,
+    content,
+    createdAt: Date.now(),
+  };
+  messages.push(msg);
+  setStore(MESSAGES, messages);
+  return msg;
 }
 
 export async function createFlag(reporterId: string, reportedUserId: string, comment: string): Promise<Flag> {
-  const database = await initDB();
-  const id = crypto.randomUUID();
-  const createdAt = Date.now();
-  database.run(
-    'INSERT INTO flags (id, reporterId, reportedUserId, comment, createdAt, resolved) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, reporterId, reportedUserId, comment, createdAt, 0]
-  );
-  await saveDB();
-  return { id, reporterId, reportedUserId, comment, createdAt, resolved: false };
+  await initDB();
+  const flags = getStore<Flag>(FLAGS);
+  const flag: Flag = {
+    id: crypto.randomUUID(),
+    reporterId,
+    reportedUserId,
+    comment,
+    createdAt: Date.now(),
+    resolved: false,
+  };
+  flags.push(flag);
+  setStore(FLAGS, flags);
+  return flag;
 }
 
 export async function getFlags(): Promise<Flag[]> {
-  const database = await initDB();
-  const result = database.exec('SELECT * FROM flags WHERE resolved = 0 ORDER BY createdAt DESC');
-  if (!result.length) return [];
-  return result[0].values.map((row) => ({
-    id: String(row[0] ?? ''),
-    reporterId: String(row[1] ?? ''),
-    reportedUserId: String(row[2] ?? ''),
-    comment: String(row[3] ?? ''),
-    createdAt: Number(row[4] ?? 0),
-    resolved: Boolean(row[5]),
-  }));
+  await initDB();
+  const flags = getStore<Flag>(FLAGS);
+  return flags.filter(f => !f.resolved).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function resolveFlag(flagId: string): Promise<void> {
-  const database = await initDB();
-  database.run('UPDATE flags SET resolved = 1 WHERE id = ?', [flagId]);
-  await saveDB();
+  await initDB();
+  const flags = getStore<Flag>(FLAGS);
+  const idx = flags.findIndex(f => f.id === flagId);
+  if (idx === -1) return;
+  flags[idx].resolved = true;
+  setStore(FLAGS, flags);
 }
 
 export async function revealProfile(matchId: string, userId: string): Promise<void> {
-  const database = await initDB();
-  const match = database.exec('SELECT userA, userB, profileRevealedA, profileRevealedB FROM matches WHERE id = ?', [matchId]);
-  if (!match.length || !match[0].values.length) return;
-  const row = match[0].values[0];
-  const userA = String(row[0] ?? '');
-  const userB = String(row[1] ?? '');
-  if (userA === userId) {
-    database.run('UPDATE matches SET profileRevealedA = 1 WHERE id = ?', [matchId]);
-  } else if (userB === userId) {
-    database.run('UPDATE matches SET profileRevealedB = 1 WHERE id = ?', [matchId]);
-  }
-  await saveDB();
+  await initDB();
+  const matches = getStore<Match>(MATCHES);
+  const idx = matches.findIndex(m => m.id === matchId);
+  if (idx === -1) return;
+  if (matches[idx].userA === userId) matches[idx].profileRevealedA = true;
+  else if (matches[idx].userB === userId) matches[idx].profileRevealedB = true;
+  setStore(MATCHES, matches);
 }
 
 export async function getMutualMatches(userId: string): Promise<Match[]> {
@@ -299,11 +181,33 @@ export async function getMutualMatches(userId: string): Promise<Match[]> {
 }
 
 export async function deleteUser(userId: string): Promise<void> {
-  const database = await initDB();
-  database.run('DELETE FROM messages WHERE matchId IN (SELECT id FROM matches WHERE userA = ? OR userB = ?)', [userId, userId]);
-  database.run('DELETE FROM matches WHERE userA = ? OR userB = ?', [userId, userId]);
-  database.run('DELETE FROM flags WHERE reporterId = ? OR reportedUserId = ?', [userId, userId]);
-  database.run('DELETE FROM profiles WHERE userId = ?', [userId]);
-  database.run('DELETE FROM users WHERE id = ?', [userId]);
-  await saveDB();
+  await initDB();
+  let profiles = getStore<Profile>(PROFILES);
+  profiles = profiles.filter(p => p.userId !== userId);
+  setStore(PROFILES, profiles);
+
+  let matches = getStore<Match>(MATCHES);
+  const matchIds = matches.filter(m => m.userA === userId || m.userB === userId).map(m => m.id);
+  matches = matches.filter(m => m.userA !== userId && m.userB !== userId);
+  setStore(MATCHES, matches);
+
+  let messages = getStore<Message>(MESSAGES);
+  messages = messages.filter(m => !matchIds.includes(m.matchId));
+  setStore(MESSAGES, messages);
+
+  let flags = getStore<Flag>(FLAGS);
+  flags = flags.filter(f => f.reporterId !== userId && f.reportedUserId !== userId);
+  setStore(FLAGS, flags);
+
+  let users = getStore<User>(USERS);
+  users = users.filter(u => u.id !== userId);
+  setStore(USERS, users);
+}
+
+export async function getAllUsersWithProfiles(excludeUserId: string): Promise<Array<{ id: string; profile: Profile }>> {
+  await initDB();
+  const profiles = getStore<Profile>(PROFILES);
+  return profiles
+    .filter(p => p.userId !== excludeUserId && p.displayName !== '')
+    .map(p => ({ id: p.userId, profile: p }));
 }

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getProfile, getMatchesForUser, createMatch, updateMatchStatus, createFlag } from '@/lib/db';
+import { getProfile, getMatchesForUser, createMatch, updateMatchStatus, createFlag, getAllUsersWithProfiles } from '@/lib/db';
 import { calculateCompatibility, generateComparison } from '@/lib/compatibility';
 import { Profile, Match } from '@/lib/types';
 
@@ -44,17 +44,7 @@ export default function MatchingPlayground() {
       }
       setMyProfile(profile);
 
-      const { initDB } = await import('@/lib/db');
-      const db = await initDB();
-      const allUsersResult = db.exec('SELECT userId FROM profiles WHERE userId != ?', [payload.userId]);
-      const users: Array<{ id: string; profile: Profile }> = [];
-      if (allUsersResult.length) {
-        for (const row of allUsersResult[0].values) {
-          const uid = row[0] as string;
-          const p = await getProfile(uid);
-          if (p && p.displayName) users.push({ id: uid, profile: p });
-        }
-      }
+      const users = await getAllUsersWithProfiles(payload.userId);
       setAllUsers(users);
 
       const userMatches = await getMatchesForUser(payload.userId);
