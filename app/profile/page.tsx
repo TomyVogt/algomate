@@ -6,42 +6,15 @@ import { verifyToken } from '@/lib/auth';
 import { getProfile, updateProfile, deleteUser } from '@/lib/db';
 import { Profile } from '@/lib/types';
 
-function parseBio(bio: string): Partial<Profile> {
-  const lower = bio.toLowerCase();
-  const words = bio.split(/\s+/);
-
-  const interestKeywords = ['hiking', 'reading', 'gaming', 'cooking', 'sports', 'music', 'movies', 'travel', 'photography', 'art', 'painting', 'writing', 'dancing', 'yoga', 'running', 'cycling', 'swimming', 'skiing', 'surfing', 'climbing', 'fishing', 'hunting', 'birdwatching', 'gardening', 'meditation', 'movies', 'series', 'board games', 'video games', 'chess', 'puzzles', 'coding', 'programming', 'sci-fi', 'fantasy', 'romance', 'thriller', 'horror', 'documentary', 'comedy', 'anime', 'manga', 'crafts', 'sewing', 'knitting', 'pottery', 'woodworking', 'metalwork', 'electronics', 'robotics'];
-
-  const valueKeywords = ['honesty', 'loyalty', 'respect', 'kindness', 'courage', 'patience', 'humor', 'ambition', 'creativity', 'curiosity', 'independence', 'family', 'friendship', 'adventure', 'growth', 'learning', 'success', 'wealth', 'health', 'fitness', 'spirituality', 'philosophy', 'nature', 'community', 'tradition', 'freedom', 'justice', 'fairness', 'integrity', 'wisdom'];
-
-  const hobbyKeywords = ['hiking', 'reading', 'gaming', 'cooking', 'sports', 'music', 'movies', 'travel', 'photography', 'art', 'painting', 'writing', 'dancing', 'yoga', 'running', 'cycling', 'swimming', 'skiing', 'surfing', 'climbing', 'fishing', 'gardening', 'chess', 'puzzles', 'coding', 'crafts', 'sewing', 'knitting', 'pottery', 'woodworking'];
-
-  const interests: string[] = [];
-  const values: string[] = [];
-  const hobbies: string[] = [];
-
-  interestKeywords.forEach(k => { if (lower.includes(k) && !interests.includes(k)) interests.push(k); });
-  valueKeywords.forEach(k => { if (lower.includes(k) && !values.includes(k)) values.push(k); });
-  hobbyKeywords.forEach(k => { if (lower.includes(k) && !hobbies.includes(k)) hobbies.push(k); });
-
-  let location = '';
-  let age = 0;
-  let lookingFor = '';
-
-  const locationMatch = bio.match(/location[:\s]+([A-Za-z\s]+?)(?:\.|$|,)/i);
-  if (locationMatch) location = locationMatch[1].trim();
-
-  const ageMatch = bio.match(/age[:\s]+(\d+)/i);
-  if (ageMatch) age = parseInt(ageMatch[1]);
-
-  const lookingMatch = bio.match(/looking for[:\s]+([^\.]+)/i);
-  if (lookingMatch) lookingFor = lookingMatch[1].trim();
-
-  return { interests, values, hobbies, location, age, lookingFor };
-}
-
 export default function ProfilePage() {
+  const [displayName, setDisplayName] = useState('');
+  const [age, setAge] = useState(18);
+  const [location, setLocation] = useState('');
   const [bio, setBio] = useState('');
+  const [friendSex, setFriendSex] = useState<Profile['friendSex']>('Male');
+  const [friendMinAge, setFriendMinAge] = useState(18);
+  const [friendMaxAge, setFriendMaxAge] = useState(99);
+  const [maxDistance, setMaxDistance] = useState(150);
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('user');
   const [loading, setLoading] = useState(true);
@@ -59,17 +32,14 @@ export default function ProfilePage() {
       setUserRole(payload.role);
       const data = await getProfile(payload.userId);
       if (data) {
-        const fullBio = [
-          data.bio,
-          data.displayName ? `Name: ${data.displayName}` : '',
-          data.age ? `Age: ${data.age}` : '',
-          data.location ? `Location: ${data.location}` : '',
-          data.lookingFor ? `Looking for: ${data.lookingFor}` : '',
-          data.interests.length ? `Interests: ${data.interests.join(', ')}` : '',
-          data.hobbies.length ? `Hobbies: ${data.hobbies.join(', ')}` : '',
-          data.values.length ? `Values: ${data.values.join(', ')}` : '',
-        ].filter(Boolean).join('\n');
-        setBio(fullBio);
+        setDisplayName(data.displayName || '');
+        setAge(data.age || 18);
+        setLocation(data.location || '');
+        setBio(data.bio || '');
+        setFriendSex(data.friendSex || 'Male');
+        setFriendMinAge(data.friendMinAge || 18);
+        setFriendMaxAge(data.friendMaxAge || 99);
+        setMaxDistance(data.maxDistance || 150);
       }
       setLoading(false);
     }
@@ -82,21 +52,15 @@ export default function ProfilePage() {
     setSaving(true);
     setMessage('');
 
-    const lines = bio.split('\n');
-    let displayName = '';
-    let bioText = bio;
-
-    for (const line of lines) {
-      if (line.toLowerCase().startsWith('name:')) displayName = line.split(':')[1].trim();
-    }
-    bioText = lines.filter(l => !l.toLowerCase().startsWith('name:') && !l.toLowerCase().startsWith('age:') && !l.toLowerCase().startsWith('location:') && !l.toLowerCase().startsWith('looking for:') && !l.toLowerCase().startsWith('interests:') && !l.toLowerCase().startsWith('hobbies:') && !l.toLowerCase().startsWith('values:')).join('\n').trim();
-
-    const parsed = parseBio(bio);
-
     await updateProfile(userId, {
-      displayName: displayName || 'User',
-      bio: bioText,
-      ...parsed
+      displayName: displayName || 'Anonymous',
+      age,
+      location,
+      bio,
+      friendSex,
+      friendMinAge,
+      friendMaxAge,
+      maxDistance,
     });
 
     setMessage('Profile saved!');
@@ -127,22 +91,47 @@ export default function ProfilePage() {
           {message && <p className="success bg-emerald-50 p-3 rounded-lg mb-4">{message}</p>}
           <form onSubmit={handleSave}>
             <div className="form-group">
-              <label className="label">Tell others about yourself — your story, interests, values and what you're looking for</label>
-              <textarea
-                className="input"
-                value={bio}
-                onChange={e => setBio(e.target.value)}
-                placeholder={'Name: YourName\nAge: 25\nLocation: Berlin\nLooking for: Friends for adventures\n\nI am a passionate developer who loves exploring new technologies. In my free time I enjoy hiking in the mountains and reading sci-fi novels. I value honesty and loyalty above all. Looking for friends who share similar interests and enjoy deep conversations about philosophy and technology.'}
-                rows={12}
-              />
-              <p className="text-sm mt-2" style={{ color: '#666' }}>
-                Tip: You can include keywords like "hiking", "gaming", "honesty", "cooking" etc. in your bio — they will be automatically detected for matching!
-              </p>
+              <label className="label">Display Name</label>
+              <input type="text" className="input" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+            </div>
+            <div className="form-group">
+              <label className="label">Age</label>
+              <input type="number" className="input" value={age} onChange={e => setAge(parseInt(e.target.value) || 18)} min={13} max={120} />
+            </div>
+            <div className="form-group">
+              <label className="label">Location</label>
+              <input type="text" className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="City, Country" />
+            </div>
+            <div className="form-group">
+              <label className="label">Bio — Tell others about yourself</label>
+              <textarea className="input" value={bio} onChange={e => setBio(e.target.value)} rows={6} placeholder="I am passionate about..." />
+            </div>
+            <div className="form-group">
+              <label className="label">Looking for friends who are:</label>
+              <select className="input" value={friendSex} onChange={e => setFriendSex(e.target.value as Profile['friendSex'])}>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Non-Binary">Non-Binary</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="form-group">
+                <label className="label">Min Friend Age</label>
+                <input type="number" className="input" value={friendMinAge} onChange={e => setFriendMinAge(parseInt(e.target.value) || 18)} min={13} max={120} />
+              </div>
+              <div className="form-group">
+                <label className="label">Max Friend Age</label>
+                <input type="number" className="input" value={friendMaxAge} onChange={e => setFriendMaxAge(parseInt(e.target.value) || 99)} min={13} max={120} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="label">Max Distance (km)</label>
+              <input type="number" className="input" value={maxDistance} onChange={e => setMaxDistance(parseInt(e.target.value) || 150)} min={1} max={50000} />
             </div>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
           </form>
         </div>
-        <div className="card border-2" style={{ borderColor: '#EF4444', backgroundColor: '#fef2f2' }}>
+        <div className="card border-2 mt-6" style={{ borderColor: '#EF4444', backgroundColor: '#fef2f2' }}>
           <h2 className="text-xl font-bold mb-2" style={{ color: '#EF4444' }}>Danger Zone</h2>
           <p className="mb-4" style={{ color: '#666' }}>Permanently delete your account and all data.</p>
           <button className="btn-danger" onClick={handleDelete}>Delete My Account</button>

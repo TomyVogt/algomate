@@ -5,29 +5,20 @@ export function calculateCompatibility(profileA: Profile, profileB: Profile): nu
   let maxScore = 0;
 
   const weights = {
-    values: 4,
-    interests: 3,
-    hobbies: 3,
-    lookingFor: 2,
-    location: 1,
+    agePreference: 3,
+    sexPreference: 3,
+    location: 2,
     bio: 2,
-    age: 1,
+    ageDifference: 2,
   };
 
-  maxScore += weights.values * 2;
-  const valuesMatch = countMatches(profileA.values, profileB.values);
-  score += valuesMatch * weights.values;
+  maxScore += weights.agePreference * 2;
+  const agePrefScore = calculateAgePreferenceScore(profileA, profileB);
+  score += agePrefScore * weights.agePreference;
 
-  maxScore += weights.interests * 2;
-  const interestsMatch = countMatches(profileA.interests, profileB.interests);
-  score += interestsMatch * weights.interests;
-
-  maxScore += weights.hobbies * 2;
-  const hobbiesMatch = countMatches(profileA.hobbies, profileB.hobbies);
-  score += hobbiesMatch * weights.hobbies;
-
-  maxScore += weights.lookingFor;
-  if (profileA.lookingFor === profileB.lookingFor) score += weights.lookingFor;
+  maxScore += weights.sexPreference * 2;
+  const sexPrefScore = calculateSexPreferenceScore(profileA, profileB);
+  score += sexPrefScore * weights.sexPreference;
 
   maxScore += weights.location;
   if (profileA.location && profileB.location && profileA.location.toLowerCase() === profileB.location.toLowerCase()) {
@@ -43,19 +34,25 @@ export function calculateCompatibility(profileA: Profile, profileB: Profile): nu
     score += bioScore * weights.bio;
   }
 
-  maxScore += weights.age;
+  maxScore += weights.ageDifference;
   const ageDiff = Math.abs(profileA.age - profileB.age);
   const ageScore = Math.max(0, 1 - ageDiff / 30);
-  score += ageScore * weights.age;
+  score += ageScore * weights.ageDifference;
 
   const normalized = maxScore > 0 ? (score / maxScore) * 10 : 0;
   return Math.round(normalized * 10) / 10;
 }
 
-function countMatches(arr1: string[], arr2: string[]): number {
-  if (!arr1.length || !arr2.length) return 0;
-  const set2 = new Set(arr2.map(s => s.toLowerCase()));
-  return arr1.filter(s => set2.has(s.toLowerCase())).length;
+function calculateAgePreferenceScore(profileA: Profile, profileB: Profile): number {
+  const aInBsRange = profileB.friendMinAge <= profileA.age && profileA.age <= profileB.friendMaxAge;
+  const bInAsRange = profileA.friendMinAge <= profileB.age && profileB.age <= profileA.friendMaxAge;
+  if (aInBsRange && bInAsRange) return 2;
+  if (aInBsRange || bInAsRange) return 1;
+  return 0;
+}
+
+function calculateSexPreferenceScore(profileA: Profile, profileB: Profile): number {
+  return 1;
 }
 
 export function generateComparison(profileA: Profile, profileB: Profile) {
@@ -63,20 +60,21 @@ export function generateComparison(profileA: Profile, profileB: Profile) {
     displayName: { a: profileA.displayName, b: profileB.displayName },
     age: { a: profileA.age, b: profileB.age },
     location: { a: profileA.location, b: profileB.location },
-    lookingFor: { a: profileA.lookingFor, b: profileB.lookingFor },
     bio: { a: profileA.bio, b: profileB.bio },
-    sharedValues: profileA.values.filter(v => profileB.values.map(vv => vv.toLowerCase()).includes(v.toLowerCase())),
-    sharedInterests: profileA.interests.filter(i => profileB.interests.map(ii => ii.toLowerCase()).includes(i.toLowerCase())),
-    sharedHobbies: profileA.hobbies.filter(h => profileB.hobbies.map(hh => hh.toLowerCase()).includes(h.toLowerCase())),
-    uniqueToA: {
-      values: profileA.values.filter(v => !profileB.values.map(vv => vv.toLowerCase()).includes(v.toLowerCase())),
-      interests: profileA.interests.filter(i => !profileB.interests.map(ii => ii.toLowerCase()).includes(i.toLowerCase())),
-      hobbies: profileA.hobbies.filter(h => !profileB.hobbies.map(hh => hh.toLowerCase()).includes(h.toLowerCase())),
+    friendSex: { a: profileA.friendSex, b: profileB.friendSex },
+    friendAgeRange: {
+      a: `${profileA.friendMinAge}-${profileA.friendMaxAge}`,
+      b: `${profileB.friendMinAge}-${profileB.friendMaxAge}`,
     },
-    uniqueToB: {
-      values: profileB.values.filter(v => !profileA.values.map(vv => vv.toLowerCase()).includes(v.toLowerCase())),
-      interests: profileB.interests.filter(i => !profileA.interests.map(ii => ii.toLowerCase()).includes(i.toLowerCase())),
-      hobbies: profileB.hobbies.filter(h => !profileA.hobbies.map(hh => hh.toLowerCase()).includes(h.toLowerCase())),
-    },
+    maxDistance: { a: profileA.maxDistance, b: profileB.maxDistance },
+    ageDifference: Math.abs(profileA.age - profileB.age),
+    bioOverlap: calculateBioOverlap(profileA.bio, profileB.bio),
   };
+}
+
+function calculateBioOverlap(bioA: string, bioB: string): number {
+  if (!bioA || !bioB) return 0;
+  const wordsA = new Set(bioA.toLowerCase().split(/\s+/));
+  const wordsB = new Set(bioB.toLowerCase().split(/\s+/));
+  return [...wordsA].filter(w => wordsB.has(w)).length;
 }

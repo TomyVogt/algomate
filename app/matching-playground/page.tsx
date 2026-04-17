@@ -140,27 +140,23 @@ export default function MatchingPlayground() {
               </div>
             )}
 
-            {comparison && (comparison.sharedValues.length > 0 || comparison.sharedInterests.length > 0 || comparison.sharedHobbies.length > 0) && (
+            {comparison && (
               <div className="shared-section">
-                <p className="font-semibold mb-2">What you share</p>
-                {comparison.sharedValues.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-sm font-medium">Values: </span>
-                    {comparison.sharedValues.map((v: string) => <span key={v} className="tag" style={{ background: '#dcfce7', color: '#166534' }}>{v}</span>)}
+                <p className="font-semibold mb-2">How you compare</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="p-2 rounded" style={{ background: '#f3f4f6' }}>
+                    <span className="font-medium">Age Difference:</span> {comparison.ageDifference} years
                   </div>
-                )}
-                {comparison.sharedInterests.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-sm font-medium">Interests: </span>
-                    {comparison.sharedInterests.map((i: string) => <span key={i} className="tag" style={{ background: '#dbeafe', color: '#1e40af' }}>{i}</span>)}
+                  <div className="p-2 rounded" style={{ background: '#f3f4f6' }}>
+                    <span className="font-medium">Bio Overlap:</span> {comparison.bioOverlap} words
                   </div>
-                )}
-                {comparison.sharedHobbies.length > 0 && (
-                  <div>
-                    <span className="text-sm font-medium">Hobbies: </span>
-                    {comparison.sharedHobbies.map((h: string) => <span key={h} className="tag" style={{ background: '#fef3c7', color: '#92400e' }}>{h}</span>)}
+                  <div className="p-2 rounded" style={{ background: '#f3f4f6' }}>
+                    <span className="font-medium">Your Age Range:</span> {comparison.friendAgeRange.a}
                   </div>
-                )}
+                  <div className="p-2 rounded" style={{ background: '#f3f4f6' }}>
+                    <span className="font-medium">Their Age Range:</span> {comparison.friendAgeRange.b}
+                  </div>
+                </div>
               </div>
             )}
 

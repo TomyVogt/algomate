@@ -45,7 +45,7 @@ export async function createUser(email: string, password: string, role: User['ro
   setStore(USERS, users);
 
   const profiles = getStore<Profile>(PROFILES);
-  profiles.push({ userId: user.id, displayName: '', age: 0, bio: '', interests: [], location: '', lookingFor: '', values: [], hobbies: [] });
+  profiles.push({ userId: user.id, displayName: '', age: 0, bio: '', location: '', friendSex: 'Male', friendMinAge: 18, friendMaxAge: 99, maxDistance: 150 });
   setStore(PROFILES, profiles);
 
   return user;

@@ -3,11 +3,11 @@ export interface Profile {
   displayName: string;
   age: number;
   bio: string;
-  interests: string[];
   location: string;
-  lookingFor: string;
-  values: string[];
-  hobbies: string[];
+  friendSex: 'Male' | 'Female' | 'Non-Binary';
+  friendMinAge: number;
+  friendMaxAge: number;
+  maxDistance: number;
 }
 
 export interface User {
