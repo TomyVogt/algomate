@@ -103,6 +103,25 @@ export async function createMatch(userA: string, userB: string, score: number): 
   return match;
 }
 
+export async function createMutualMatch(userA: string, userB: string, score: number): Promise<Match> {
+  await initDB();
+  const matches = getStore<Match>(MATCHES);
+  const match: Match = {
+    id: crypto.randomUUID(),
+    userA,
+    userB,
+    score,
+    statusA: 'match',
+    statusB: 'match',
+    profileRevealedA: true,
+    profileRevealedB: true,
+    createdAt: Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000),
+  };
+  matches.push(match);
+  setStore(MATCHES, matches);
+  return match;
+}
+
 export async function updateMatchStatus(matchId: string, userId: string, status: Match['statusA']): Promise<void> {
   await initDB();
   const matches = getStore<Match>(MATCHES);
@@ -119,7 +138,7 @@ export async function getMessages(matchId: string): Promise<Message[]> {
   return messages.filter(m => m.matchId === matchId).sort((a, b) => a.createdAt - b.createdAt);
 }
 
-export async function sendMessage(matchId: string, senderId: string, content: string): Promise<Message> {
+export async function sendMessage(matchId: string, senderId: string, content: string, createdAt?: number): Promise<Message> {
   await initDB();
   const messages = getStore<Message>(MESSAGES);
   const msg: Message = {
@@ -127,7 +146,7 @@ export async function sendMessage(matchId: string, senderId: string, content: st
     matchId,
     senderId,
     content,
-    createdAt: Date.now(),
+    createdAt: createdAt || Date.now(),
   };
   messages.push(msg);
   setStore(MESSAGES, messages);
