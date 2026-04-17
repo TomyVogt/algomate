@@ -63,18 +63,18 @@ export default function ProfilePage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
-      <div className="container-main"><p className="text-gray-500">Loading...</p></div>
+      <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
       <div className="container-main max-w-2xl">
         <div className="card">
-          <h1 className="text-2xl font-bold mb-6">My Profile</h1>
+          <h1 className="headline text-2xl font-bold mb-6">My Profile</h1>
           {message && <p className="success bg-emerald-50 p-3 rounded-lg mb-4">{message}</p>}
           <form onSubmit={handleSave}>
             <div className="form-group">
@@ -112,9 +112,9 @@ export default function ProfilePage() {
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
           </form>
         </div>
-        <div className="card border-2 border-red-200 bg-red-50">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Danger Zone</h2>
-          <p className="text-gray-600 mb-4">Permanently delete your account and all data.</p>
+        <div className="card border-2" style={{ borderColor: '#EF4444', backgroundColor: '#fef2f2' }}>
+          <h2 className="text-xl font-bold mb-2" style={{ color: '#EF4444' }}>Danger Zone</h2>
+          <p className="mb-4" style={{ color: '#666' }}>Permanently delete your account and all data.</p>
           <button className="btn-danger" onClick={handleDelete}>Delete My Account</button>
         </div>
       </div>

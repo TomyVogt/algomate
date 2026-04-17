@@ -35,11 +35,11 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav />
       <div className="container-main max-w-md">
         <div className="card">
-          <h1 className="text-2xl font-bold mb-6">Create Account</h1>
+          <h1 className="headline text-2xl font-bold mb-6">Create Account</h1>
           {error && <p className="error bg-red-50 p-3 rounded-lg">{error}</p>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
@@ -58,9 +58,9 @@ export default function Signup() {
               {loading ? 'Creating account...' : 'Sign Up'}
             </button>
           </form>
-          <p className="text-center text-gray-600 mt-4">
+          <p className="text-center mt-4" style={{ color: '#666' }}>
             Already have an account?{' '}
-            <Link href="/login" className="text-violet-600 hover:underline">Log in</Link>
+            <Link href="/login" className="underline" style={{ color: '#849fcf' }}>Log in</Link>
           </p>
         </div>
       </div>

@@ -100,75 +100,75 @@ export default function MatchingPlayground() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
-      <div className="container-main"><p className="text-gray-500">Loading...</p></div>
+      <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
       <div className="container-main max-w-2xl">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Matching Playground</h1>
-        <p className="text-gray-600 mb-6">See how you compare with others. Only when you both match, you connect.</p>
+        <h1 className="headline text-3xl font-bold mb-2">Matching Playground</h1>
+        <p className="mb-6" style={{ color: '#666' }}>See how you compare with others. Only when you both match, you connect.</p>
 
         {!otherProfile ? (
           <div className="card text-center py-12">
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">No more profiles to compare</h2>
-            <p className="text-gray-500">Come back later when new people join!</p>
+            <h2 className="text-xl font-semibold mb-2">No more profiles to compare</h2>
+            <p style={{ color: '#666' }}>Come back later when new people join!</p>
           </div>
         ) : (
           <div className="card">
             <div className="text-center mb-6">
               <div className="score-circle">{score?.toFixed(1)}</div>
-              <p className="text-gray-500 text-sm">Compatibility Score</p>
+              <p className="text-sm" style={{ color: '#666' }}>Compatibility Score</p>
             </div>
 
             {comparison && (
               <div className="comparison-grid">
                 <div className="comparison-col">
-                  <p className="font-bold text-violet-600 mb-2">You</p>
+                  <p className="font-bold mb-2" style={{ color: '#90c367' }}>You</p>
                   <p className="font-semibold">{comparison.displayName.a}</p>
-                  <p className="text-sm text-gray-600">Age: {comparison.age.a}</p>
-                  <p className="text-sm text-gray-600">{comparison.location.a || '—'}</p>
-                  <p className="text-sm text-gray-600">Looking for: {comparison.lookingFor.a || '—'}</p>
+                  <p className="text-sm" style={{ color: '#666' }}>Age: {comparison.age.a}</p>
+                  <p className="text-sm" style={{ color: '#666' }}>{comparison.location.a || '—'}</p>
+                  <p className="text-sm" style={{ color: '#666' }}>Looking for: {comparison.lookingFor.a || '—'}</p>
                 </div>
                 <div className="comparison-col">
-                  <p className="font-bold text-emerald-600 mb-2">Them</p>
+                  <p className="font-bold mb-2" style={{ color: '#849fcf' }}>Them</p>
                   <p className="font-semibold">{comparison.displayName.b}</p>
-                  <p className="text-sm text-gray-600">Age: {comparison.age.b}</p>
-                  <p className="text-sm text-gray-600">{comparison.location.b || '—'}</p>
-                  <p className="text-sm text-gray-600">Looking for: {comparison.lookingFor.b || '—'}</p>
+                  <p className="text-sm" style={{ color: '#666' }}>Age: {comparison.age.b}</p>
+                  <p className="text-sm" style={{ color: '#666' }}>{comparison.location.b || '—'}</p>
+                  <p className="text-sm" style={{ color: '#666' }}>Looking for: {comparison.lookingFor.b || '—'}</p>
                 </div>
               </div>
             )}
 
             {comparison && (comparison.sharedValues.length > 0 || comparison.sharedInterests.length > 0 || comparison.sharedHobbies.length > 0) && (
               <div className="shared-section">
-                <p className="font-semibold text-indigo-700 mb-2">What you share</p>
+                <p className="font-semibold mb-2" style={{ color: '#111' }}>What you share</p>
                 {comparison.sharedValues.length > 0 && (
                   <div className="mb-3">
-                    <span className="text-sm font-medium text-gray-700">Values: </span>
-                    {comparison.sharedValues.map(v => <span key={v} className="tag bg-violet-100 text-violet-700">{v}</span>)}
+                    <span className="text-sm font-medium">Values: </span>
+                    {comparison.sharedValues.map(v => <span key={v} className="tag" style={{ background: '#dcfce7', color: '#166534' }}>{v}</span>)}
                   </div>
                 )}
                 {comparison.sharedInterests.length > 0 && (
                   <div className="mb-3">
-                    <span className="text-sm font-medium text-gray-700">Interests: </span>
-                    {comparison.sharedInterests.map(i => <span key={i} className="tag bg-emerald-100 text-emerald-700">{i}</span>)}
+                    <span className="text-sm font-medium">Interests: </span>
+                    {comparison.sharedInterests.map(i => <span key={i} className="tag" style={{ background: '#dbeafe', color: '#1e40af' }}>{i}</span>)}
                   </div>
                 )}
                 {comparison.sharedHobbies.length > 0 && (
                   <div>
-                    <span className="text-sm font-medium text-gray-700">Hobbies: </span>
-                    {comparison.sharedHobbies.map(h => <span key={h} className="tag bg-amber-100 text-amber-700">{h}</span>)}
+                    <span className="text-sm font-medium">Hobbies: </span>
+                    {comparison.sharedHobbies.map(h => <span key={h} className="tag" style={{ background: '#fef3c7', color: '#92400e' }}>{h}</span>)}
                   </div>
                 )}
               </div>
             )}
 
-            <div className="flex gap-3 justify-center mt-6">
+            <div className="flex gap-3 justify-center mt-6 flex-wrap">
               <button className="btn-match" onClick={() => handleAction('match')} disabled={processing}>Match</button>
               <button className="btn-decline" onClick={() => handleAction('decline')} disabled={processing}>Decline</button>
               <button className="btn-secondary" onClick={() => handleAction('disregard')} disabled={processing}>Disregard</button>
@@ -176,13 +176,13 @@ export default function MatchingPlayground() {
 
             {!flagging ? (
               <div className="text-center mt-4">
-                <button className="text-red-500 hover:text-red-700 text-sm hover:underline" onClick={() => setFlagging(true)}>
+                <button className="text-sm underline" style={{ color: '#EF4444' }} onClick={() => setFlagging(true)}>
                   Flag as Dangerous
                 </button>
               </div>
             ) : (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="font-semibold text-red-700 mb-2">Why are you flagging this user?</p>
+              <div className="mt-4 p-4 rounded-lg" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
+                <p className="font-semibold mb-2" style={{ color: '#EF4444' }}>Why are you flagging this user?</p>
                 <textarea
                   className="input bg-white"
                   value={flagComment}

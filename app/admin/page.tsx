@@ -53,43 +53,43 @@ export default function Admin() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
-      <div className="container-main"><p className="text-gray-500">Loading...</p></div>
+      <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
       <div className="container-main">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <h1 className="headline text-3xl font-bold mb-2">
           Admin Panel — {userRole === 'admin' ? 'Administrator' : 'Moderator'}
         </h1>
         <div className="card">
           <h2 className="text-xl font-semibold mb-4">Flagged Users</h2>
           {flags.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-emerald-600 text-lg">✓ Community is doing great!</p>
-              <p className="text-gray-500 mt-1">No flagged users at the moment.</p>
+              <p className="text-lg" style={{ color: '#10B981' }}>✓ Community is doing great!</p>
+              <p className="mt-1" style={{ color: '#666' }}>No flagged users at the moment.</p>
             </div>
           )}
           {flags.map(flag => (
-            <div key={flag.id} className="border-2 border-red-200 rounded-lg p-4 mb-4 bg-red-50">
+            <div key={flag.id} className="rounded-lg p-4 mb-4" style={{ background: '#fef2f2', border: '2px solid #EF4444' }}>
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <p className="font-semibold text-lg text-red-700">
+                  <p className="font-semibold text-lg" style={{ color: '#EF4444' }}>
                     {flag.reportedProfile?.displayName || 'Unknown User'}
                   </p>
-                  <p className="text-sm text-gray-600">Reported by: {flag.reporterProfile?.displayName || 'Unknown'}</p>
+                  <p className="text-sm" style={{ color: '#666' }}>Reported by: {flag.reporterProfile?.displayName || 'Unknown'}</p>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs" style={{ color: '#999' }}>
                   {new Date(flag.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <div className="bg-white p-3 rounded border border-red-100 mb-3">
-                <p className="text-sm font-medium text-gray-700 mb-1">Reason for flag:</p>
-                <p className="text-gray-800">{flag.comment}</p>
+              <div className="p-3 rounded bg-white mb-3" style={{ border: '1px solid #fecaca' }}>
+                <p className="text-sm font-medium mb-1">Reason for flag:</p>
+                <p>{flag.comment}</p>
               </div>
               <button className="btn-secondary text-sm" onClick={() => handleResolve(flag.id)}>
                 Mark Resolved

@@ -80,9 +80,9 @@ export default function Messages() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
-      <div className="container-main"><p className="text-gray-500">Loading...</p></div>
+      <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
@@ -91,21 +91,22 @@ export default function Messages() {
   const iRevealed = currentMatch ? (currentMatch.userA === userId ? currentMatch.profileRevealedA : currentMatch.profileRevealedB) : false;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Nav userRole={userRole} />
       <div className="container-main">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Messages</h1>
+        <h1 className="headline text-3xl font-bold mb-6">Messages</h1>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4" style={{ height: '70vh' }}>
           <div className="card overflow-y-auto">
-            {matches.length === 0 && <p className="text-gray-500 text-sm">No mutual matches yet. Go to the Matching Playground!</p>}
+            {matches.length === 0 && <p style={{ color: '#666' }}>No mutual matches yet. Go to the Matching Playground!</p>}
             {matches.map(m => (
               <div
                 key={m.id}
                 onClick={() => selectMatch(m.id)}
-                className={`p-3 rounded-lg cursor-pointer mb-1 transition-colors ${selected === m.id ? 'bg-violet-100' : 'hover:bg-gray-100'}`}
+                className="p-3 rounded-lg cursor-pointer mb-1 transition-colors"
+                style={{ background: selected === m.id ? '#dbeafe' : 'transparent' }}
               >
                 <p className="font-semibold">{m.otherProfile?.displayName || 'Loading...'}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs mt-1" style={{ color: '#666' }}>
                   {bothRevealed ? '✓ Profiles revealed' : iRevealed ? '✓ You revealed yours' : '🔒 Profiles hidden'}
                 </p>
               </div>
@@ -113,24 +114,24 @@ export default function Messages() {
           </div>
           <div className="card md:col-span-3 flex flex-col">
             {!selected ? (
-              <p className="text-gray-500 text-center mt-12">Select a conversation to start chatting</p>
+              <p className="text-center mt-12" style={{ color: '#666' }}>Select a conversation to start chatting</p>
             ) : (
               <>
                 {currentMatch?.otherProfile && (
-                  <div className="border-b border-gray-200 pb-4 mb-4">
+                  <div className="pb-4 mb-4" style={{ borderBottom: '1px solid #e5e5e5' }}>
                     <p className="font-bold text-lg">{currentMatch.otherProfile.displayName}</p>
-                    <p className="text-sm text-gray-600">{currentMatch.otherProfile.location} · Age {currentMatch.otherProfile.age}</p>
+                    <p className="text-sm" style={{ color: '#666' }}>{currentMatch.otherProfile.location} · Age {currentMatch.otherProfile.age}</p>
                     {!bothRevealed && (
-                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                      <div className="mt-3 p-3 rounded-lg" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
                         {!iRevealed ? (
-                          <p>You have not revealed your profile yet. Once you both reveal, you will see each other&apos;s full profiles.</p>
+                          <p className="text-sm">You have not revealed your profile yet. Once you both reveal, you will see each other&apos;s full profiles.</p>
                         ) : (
-                          <p>Waiting for the other person to reveal their profile...</p>
+                          <p className="text-sm">Waiting for the other person to reveal their profile...</p>
                         )}
                       </div>
                     )}
                     {bothRevealed && currentMatch.otherProfile.bio && (
-                      <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                      <div className="mt-3 p-3 rounded-lg" style={{ background: '#dcfce7' }}>
                         <p className="font-semibold text-sm">Bio:</p>
                         <p className="text-sm mt-1">{currentMatch.otherProfile.bio}</p>
                       </div>
@@ -144,8 +145,8 @@ export default function Messages() {
                 )}
                 <div className="flex-1 overflow-y-auto mb-4 space-y-2">
                   {messages.map(msg => (
-                    <div key={msg.id} className={`flex ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}>
-                      <span className={`inline-block px-4 py-2 rounded-xl max-w-xs ${msg.senderId === userId ? 'bg-violet-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                    <div key={msg.id} className="flex" style={{ justifyContent: msg.senderId === userId ? 'flex-end' : 'flex-start' }}>
+                      <span className="inline-block px-4 py-2 rounded-xl max-w-xs" style={{ background: msg.senderId === userId ? '#90c367' : '#e5e5e5', color: msg.senderId === userId ? 'white' : '#111' }}>
                         {msg.content}
                       </span>
                     </div>
