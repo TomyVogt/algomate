@@ -29,6 +29,7 @@
 - Keep language light and easy to understand
 - Short explanations while working, 2-3 sentence summary after
 - Remember: Tom has a basic theoretical foundation in IT/HTML but nothing advanced
+- **After making changes, always ask Tom if he wants to test the app in Chrome before continuing**
 
 ---
 
