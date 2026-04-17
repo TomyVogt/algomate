@@ -61,14 +61,9 @@ export default function MatchingPlayground() {
   }, [router]);
 
   async function loadNextComparison() {
-    const existingMatchIds = new Set([
-      ...matches.map(m => m.userA === otherUserId || m.userB === otherUserId ? m.id : null),
-      ...mutualMatches.map(m => m.userA === otherUserId || m.userB === otherUserId ? m.id : null),
-    ]);
     const remaining = allUsers.filter(u => {
-      const hasMatch = matches.find(m => m.userA === u.id || m.userB === u.id);
       const hasMutual = mutualMatches.find(m => m.userA === u.id || m.userB === u.id);
-      return !hasMatch && !hasMutual;
+      return !hasMutual;
     });
     if (!remaining.length) { setOtherProfile(null); setScore(null); setComparison(null); return; }
 
@@ -84,6 +79,15 @@ export default function MatchingPlayground() {
   useEffect(() => {
     if (myProfile && allUsers.length) loadNextComparison();
   }, [myProfile, allUsers.length]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const interval = setInterval(async () => {
+      const mutual = await getMutualMatches(userId);
+      setMutualMatches(mutual);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [userId]);
 
   async function handleAction(action: 'match' | 'disregard' | 'decline') {
     if (!userId || !otherUserId || !score) return;
