@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getFlags, resolveFlag, getProfile } from '@/lib/db';
+import { getFlags, resolveFlag, getProfile, getMutualMatches } from '@/lib/db';
 import { Flag, Profile } from '@/lib/types';
 
 function getCookie(name: string): string | null {
@@ -20,6 +20,7 @@ export default function Admin() {
   const [flags, setFlags] = useState<EnrichedFlag[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
+  const [mutualMatchCount, setMutualMatchCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,6 +35,8 @@ export default function Admin() {
       setUserRole(payload.role);
 
       const flagsData = await getFlags();
+      const mutual = await getMutualMatches(payload.userId);
+      setMutualMatchCount(mutual.length);
       const enriched = await Promise.all(
         flagsData.map(async (f) => {
           const reporterProfile = await getProfile(f.reporterId);
@@ -54,14 +57,14 @@ export default function Admin() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} />
+      <Nav userRole={userRole} newMutualMatches={0} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} />
+      <Nav userRole={userRole} newMutualMatches={mutualMatchCount} />
       <div className="container-main">
         <h1 className="headline text-3xl font-bold mb-2">
           Admin Panel — {userRole === 'admin' ? 'Administrator' : 'Moderator'}

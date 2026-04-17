@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getProfile, updateProfile, deleteUser } from '@/lib/db';
+import { getProfile, updateProfile, deleteUser, getMutualMatches } from '@/lib/db';
 import { Profile } from '@/lib/types';
 import { geocodeSwissLocation } from '@/lib/geo';
 
@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [geocoding, setGeocoding] = useState(false);
   const [message, setMessage] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mutualMatchCount, setMutualMatchCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,6 +35,8 @@ export default function ProfilePage() {
       setUserId(payload.userId);
       setUserRole(payload.role);
       const data = await getProfile(payload.userId);
+      const mutual = await getMutualMatches(payload.userId);
+      setMutualMatchCount(mutual.length);
       if (data) {
         setDisplayName(data.displayName || '');
         setAge(data.age || 18);
@@ -104,14 +107,14 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} />
+      <Nav userRole={userRole} newMutualMatches={0} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} />
+      <Nav userRole={userRole} newMutualMatches={mutualMatchCount} />
       <div className="container-main max-w-2xl">
         <div className="card">
           <h1 className="headline text-2xl font-bold mb-6">My Profile</h1>

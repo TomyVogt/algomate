@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getProfile, getMatchesForUser, createMatch, updateMatchStatus, createFlag, getAllUsersWithProfiles } from '@/lib/db';
+import { getProfile, getMatchesForUser, createMatchWithMutualCheck, createMatch, updateMatchStatus, createFlag, getAllUsersWithProfiles, getMutualMatches } from '@/lib/db';
 import { calculateCompatibility, generateComparison } from '@/lib/compatibility';
 import { Profile, Match } from '@/lib/types';
 
@@ -16,6 +16,7 @@ export default function MatchingPlayground() {
   const [userId, setUserId] = useState<string | null>(null);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [mutualMatches, setMutualMatches] = useState<Match[]>([]);
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null);
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
@@ -26,6 +27,8 @@ export default function MatchingPlayground() {
   const [flagging, setFlagging] = useState(false);
   const [flagComment, setFlagComment] = useState('');
   const [userRole, setUserRole] = useState<string>('');
+  const [showMatchNotification, setShowMatchNotification] = useState(false);
+  const [matchedWithName, setMatchedWithName] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -49,15 +52,23 @@ export default function MatchingPlayground() {
 
       const userMatches = await getMatchesForUser(payload.userId);
       setMatches(userMatches);
+
+      const mutual = await getMutualMatches(payload.userId);
+      setMutualMatches(mutual);
       setLoading(false);
     }
     load();
   }, [router]);
 
   async function loadNextComparison() {
+    const existingMatchIds = new Set([
+      ...matches.map(m => m.userA === otherUserId || m.userB === otherUserId ? m.id : null),
+      ...mutualMatches.map(m => m.userA === otherUserId || m.userB === otherUserId ? m.id : null),
+    ]);
     const remaining = allUsers.filter(u => {
-      const existing = matches.find(m => m.userA === u.id || m.userB === u.id);
-      return !existing;
+      const hasMatch = matches.find(m => m.userA === u.id || m.userB === u.id);
+      const hasMutual = mutualMatches.find(m => m.userA === u.id || m.userB === u.id);
+      return !hasMatch && !hasMutual;
     });
     if (!remaining.length) { setOtherProfile(null); setScore(null); setComparison(null); return; }
 
@@ -78,15 +89,26 @@ export default function MatchingPlayground() {
     if (!userId || !otherUserId || !score) return;
     setProcessing(true);
 
-    const existing = matches.find(m => m.userA === otherUserId || m.userB === otherUserId);
-    if (existing) {
-      await updateMatchStatus(existing.id, userId, action);
+    if (action === 'match') {
+      const { match, isMutual } = await createMatchWithMutualCheck(userId, otherUserId, score);
+      if (isMutual) {
+        setMatchedWithName(otherProfile?.displayName || 'User');
+        setShowMatchNotification(true);
+        setTimeout(() => setShowMatchNotification(false), 5000);
+      }
     } else {
-      await createMatch(userId, otherUserId, score);
+      const existing = matches.find(m => m.userA === otherUserId || m.userB === otherUserId);
+      if (existing) {
+        await updateMatchStatus(existing.id, userId, action);
+      } else {
+        await createMatch(userId, otherUserId, score);
+      }
     }
 
     const updated = await getMatchesForUser(userId);
     setMatches(updated);
+    const mutual = await getMutualMatches(userId);
+    setMutualMatches(mutual);
     await loadNextComparison();
     setProcessing(false);
   }
@@ -101,14 +123,21 @@ export default function MatchingPlayground() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} />
+      <Nav userRole={userRole} newMutualMatches={0} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} />
+      <Nav userRole={userRole} newMutualMatches={mutualMatches.length} />
+      {showMatchNotification && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+          <span className="text-xl">🎉</span>
+          <span>It's a match with <strong>{matchedWithName}</strong>! Check Messages to start chatting.</span>
+          <button onClick={() => setShowMatchNotification(false)} className="ml-2 hover:opacity-80">×</button>
+        </div>
+      )}
       <div className="container-main max-w-2xl">
         <h1 className="headline text-3xl font-bold mb-2">Matching Playground</h1>
         <p className="mb-6" style={{ color: '#666' }}>See how you compare with others. Only when you both match, you connect.</p>

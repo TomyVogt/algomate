@@ -199,6 +199,77 @@ export async function getMutualMatches(userId: string): Promise<Match[]> {
   return all.filter(m => m.statusA === 'match' && m.statusB === 'match');
 }
 
+export async function handleMatchAction(matchId: string, userId: string, action: 'match' | 'decline' | 'disregard'): Promise<{ created: boolean; matched: boolean }> {
+  await initDB();
+  const matches = getStore<Match>(MATCHES);
+  const idx = matches.findIndex(m => m.id === matchId);
+  if (idx !== -1) {
+    const match = matches[idx];
+    const isUserA = match.userA === userId;
+    if (isUserA) {
+      matches[idx].statusA = action;
+    } else {
+      matches[idx].statusB = action;
+    }
+    setStore(MATCHES, matches);
+    return { created: false, matched: matches[idx].statusA === 'match' && matches[idx].statusB === 'match' };
+  }
+  const newMatch: Match = {
+    id: matchId || crypto.randomUUID(),
+    userA: userId,
+    userB: '', // Will be set below
+    score: 0,
+    statusA: action,
+    statusB: 'pending',
+    profileRevealedA: false,
+    profileRevealedB: false,
+    createdAt: Date.now(),
+  };
+  matches.push(newMatch);
+  setStore(MATCHES, matches);
+  return { created: true, matched: false };
+}
+
+export async function createMatchWithMutualCheck(userA: string, userB: string, score: number): Promise<{ match: Match; isMutual: boolean }> {
+  await initDB();
+  const matches = getStore<Match>(MATCHES);
+  const existingAsB = matches.find(m => m.userA === userB && m.userB === userA);
+  if (existingAsB) {
+    if (existingAsB.statusA === 'match') {
+      existingAsB.statusB = 'match';
+      existingAsB.score = score;
+      existingAsB.profileRevealedB = true;
+      setStore(MATCHES, matches);
+      return { match: existingAsB, isMutual: true };
+    }
+  }
+  const existingAsA = matches.find(m => m.userA === userA && m.userB === userB);
+  if (existingAsA) {
+    if (existingAsA.statusB === 'match') {
+      existingAsA.statusA = 'match';
+      existingAsA.score = score;
+      existingAsA.profileRevealedA = true;
+      setStore(MATCHES, matches);
+      return { match: existingAsA, isMutual: true };
+    }
+    return { match: existingAsA, isMutual: false };
+  }
+  const match: Match = {
+    id: crypto.randomUUID(),
+    userA,
+    userB,
+    score,
+    statusA: 'match',
+    statusB: 'pending',
+    profileRevealedA: true,
+    profileRevealedB: false,
+    createdAt: Date.now(),
+  };
+  matches.push(match);
+  setStore(MATCHES, matches);
+  return { match, isMutual: false };
+}
+
 export async function deleteUser(userId: string): Promise<void> {
   await initDB();
   let profiles = getStore<Profile>(PROFILES);
