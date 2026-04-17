@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getProfile, updateProfile } from '@/lib/db';
+import { getProfile, updateProfile, deleteUser } from '@/lib/db';
 import { Profile } from '@/lib/types';
 
 export default function ProfilePage() {
@@ -57,66 +57,64 @@ export default function ProfilePage() {
   async function handleDelete() {
     if (!userId) return;
     if (!confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) return;
-    const { deleteUser } = await import('@/lib/db');
     await deleteUser(userId);
     document.cookie = 'algomate_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC';
     router.push('/');
   }
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50">
+      <Nav userRole={userRole} />
+      <div className="container-main"><p className="text-gray-500">Loading...</p></div>
+    </div>
+  );
 
   return (
-    <div>
-      <nav className="nav container">
-        <Link href="/">Algomate</Link>
-        <Link href="/profile">My Profile</Link>
-        <Link href="/matching-playground">Matching Playground</Link>
-        <Link href="/messages">Messages</Link>
-        {(userRole === 'admin' || userRole === 'mod') && <Link href="/admin">Admin</Link>}
-      </nav>
-      <div className="container" style={{ maxWidth: '600px' }}>
+    <div className="min-h-screen bg-gray-50">
+      <Nav userRole={userRole} />
+      <div className="container-main max-w-2xl">
         <div className="card">
-          <h1>My Profile</h1>
-          {message && <p className="success">{message}</p>}
+          <h1 className="text-2xl font-bold mb-6">My Profile</h1>
+          {message && <p className="success bg-emerald-50 p-3 rounded-lg mb-4">{message}</p>}
           <form onSubmit={handleSave}>
             <div className="form-group">
               <label className="label">Display Name</label>
-              <input value={profile.displayName || ''} onChange={e => setProfile({ ...profile, displayName: e.target.value })} placeholder="How you want to be seen" />
+              <input type="text" className="input" value={profile.displayName || ''} onChange={e => setProfile({ ...profile, displayName: e.target.value })} placeholder="How you want to be seen" />
             </div>
             <div className="form-group">
               <label className="label">Age</label>
-              <input type="number" value={profile.age || ''} onChange={e => setProfile({ ...profile, age: parseInt(e.target.value) })} placeholder="Your age" />
+              <input type="number" className="input" value={profile.age || ''} onChange={e => setProfile({ ...profile, age: parseInt(e.target.value) || 0 })} placeholder="Your age" />
             </div>
             <div className="form-group">
               <label className="label">Location</label>
-              <input value={profile.location || ''} onChange={e => setProfile({ ...profile, location: e.target.value })} placeholder="City or area" />
+              <input type="text" className="input" value={profile.location || ''} onChange={e => setProfile({ ...profile, location: e.target.value })} placeholder="City or area" />
             </div>
             <div className="form-group">
               <label className="label">Looking For</label>
-              <input value={profile.lookingFor || ''} onChange={e => setProfile({ ...profile, lookingFor: e.target.value })} placeholder="e.g. Activity partners, Deep conversations" />
+              <input type="text" className="input" value={profile.lookingFor || ''} onChange={e => setProfile({ ...profile, lookingFor: e.target.value })} placeholder="e.g. Activity partners, Deep conversations" />
             </div>
             <div className="form-group">
               <label className="label">Bio</label>
-              <textarea value={profile.bio || ''} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="Tell others about yourself..." rows={4} />
+              <textarea className="input" value={profile.bio || ''} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="Tell others about yourself..." rows={4} />
             </div>
             <div className="form-group">
               <label className="label">Interests (comma separated)</label>
-              <input value={tags.interests} onChange={e => setTags({ ...tags, interests: e.target.value })} placeholder="e.g. hiking, cooking, gaming" />
+              <input type="text" className="input" value={tags.interests} onChange={e => setTags({ ...tags, interests: e.target.value })} placeholder="e.g. hiking, cooking, gaming" />
             </div>
             <div className="form-group">
               <label className="label">Values (comma separated)</label>
-              <input value={tags.values} onChange={e => setTags({ ...tags, values: e.target.value })} placeholder="e.g. honesty, loyalty, adventure" />
+              <input type="text" className="input" value={tags.values} onChange={e => setTags({ ...tags, values: e.target.value })} placeholder="e.g. honesty, loyalty, adventure" />
             </div>
             <div className="form-group">
               <label className="label">Hobbies (comma separated)</label>
-              <input value={tags.hobbies} onChange={e => setTags({ ...tags, hobbies: e.target.value })} placeholder="e.g. chess, painting, running" />
+              <input type="text" className="input" value={tags.hobbies} onChange={e => setTags({ ...tags, hobbies: e.target.value })} placeholder="e.g. chess, painting, running" />
             </div>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
           </form>
         </div>
-        <div className="card" style={{ border: '1px solid #e74c3c' }}>
-          <h2 style={{ color: '#e74c3c' }}>Danger Zone</h2>
-          <p style={{ marginBottom: '16px', color: '#666' }}>Permanently delete your account and all data.</p>
+        <div className="card border-2 border-red-200 bg-red-50">
+          <h2 className="text-xl font-bold text-red-600 mb-2">Danger Zone</h2>
+          <p className="text-gray-600 mb-4">Permanently delete your account and all data.</p>
           <button className="btn-danger" onClick={handleDelete}>Delete My Account</button>
         </div>
       </div>

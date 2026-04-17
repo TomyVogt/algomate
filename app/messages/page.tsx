@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
 import { getMutualMatches, getMessages, sendMessage, getProfile, revealProfile } from '@/lib/db';
 import { Match, Message, Profile } from '@/lib/types';
@@ -22,8 +22,8 @@ export default function Messages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [revealing, setRevealing] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -33,9 +33,7 @@ export default function Messages() {
       const payload = await verifyToken(token);
       if (!payload) { router.push('/login'); return; }
       setUserId(payload.userId);
-
-      const my = await getProfile(payload.userId);
-      setMyProfile(my);
+      setUserRole(payload.role);
 
       const mutual = await getMutualMatches(payload.userId);
       const enriched: EnrichedMatch[] = await Promise.all(
@@ -81,75 +79,85 @@ export default function Messages() {
     setRevealing(false);
   }
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50">
+      <Nav userRole={userRole} />
+      <div className="container-main"><p className="text-gray-500">Loading...</p></div>
+    </div>
+  );
 
   const currentMatch = matches.find(m => m.id === selected);
   const bothRevealed = currentMatch?.profileRevealedA && currentMatch?.profileRevealedB;
   const iRevealed = currentMatch ? (currentMatch.userA === userId ? currentMatch.profileRevealedA : currentMatch.profileRevealedB) : false;
 
   return (
-    <div>
-      <nav className="nav container">
-        <Link href="/">Algomate</Link>
-        <Link href="/profile">My Profile</Link>
-        <Link href="/matching-playground">Matching Playground</Link>
-        <Link href="/messages" className="active">Messages</Link>
-      </nav>
-      <div className="container">
-        <h1>Messages</h1>
-        <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '16px', height: '70vh' }}>
-          <div className="card" style={{ overflowY: 'auto' }}>
-            {matches.length === 0 && <p style={{ color: '#666' }}>No mutual matches yet. Go to the Matching Playground!</p>}
+    <div className="min-h-screen bg-gray-50">
+      <Nav userRole={userRole} />
+      <div className="container-main">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Messages</h1>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4" style={{ height: '70vh' }}>
+          <div className="card overflow-y-auto">
+            {matches.length === 0 && <p className="text-gray-500 text-sm">No mutual matches yet. Go to the Matching Playground!</p>}
             {matches.map(m => (
-              <div key={m.id} onClick={() => selectMatch(m.id)} style={{ padding: '12px', cursor: 'pointer', borderRadius: '8px', background: selected === m.id ? '#eef2ff' : 'transparent', marginBottom: '4px' }}>
-                <strong>{m.otherProfile?.displayName || 'Loading...'}</strong>
-                <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '4px' }}>
+              <div
+                key={m.id}
+                onClick={() => selectMatch(m.id)}
+                className={`p-3 rounded-lg cursor-pointer mb-1 transition-colors ${selected === m.id ? 'bg-violet-100' : 'hover:bg-gray-100'}`}
+              >
+                <p className="font-semibold">{m.otherProfile?.displayName || 'Loading...'}</p>
+                <p className="text-xs text-gray-500 mt-1">
                   {bothRevealed ? '✓ Profiles revealed' : iRevealed ? '✓ You revealed yours' : '🔒 Profiles hidden'}
-                </div>
+                </p>
               </div>
             ))}
           </div>
-          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="card md:col-span-3 flex flex-col">
             {!selected ? (
-              <p style={{ color: '#666', textAlign: 'center', marginTop: '40px' }}>Select a conversation to start chatting</p>
+              <p className="text-gray-500 text-center mt-12">Select a conversation to start chatting</p>
             ) : (
               <>
                 {currentMatch?.otherProfile && (
-                  <div style={{ borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px' }}>
-                    <strong>{currentMatch.otherProfile.displayName}</strong>
-                    <p style={{ fontSize: '0.85rem', color: '#666' }}>{currentMatch.otherProfile.location} · Age {currentMatch.otherProfile.age}</p>
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <p className="font-bold text-lg">{currentMatch.otherProfile.displayName}</p>
+                    <p className="text-sm text-gray-600">{currentMatch.otherProfile.location} · Age {currentMatch.otherProfile.age}</p>
                     {!bothRevealed && (
-                      <div style={{ marginTop: '8px', padding: '8px', background: '#fef9e7', borderRadius: '6px', fontSize: '0.85rem' }}>
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
                         {!iRevealed ? (
-                          <p>You have not revealed your profile yet. Once you both reveal, you'll see each other's full profiles.</p>
+                          <p>You have not revealed your profile yet. Once you both reveal, you will see each other&apos;s full profiles.</p>
                         ) : (
                           <p>Waiting for the other person to reveal their profile...</p>
                         )}
                       </div>
                     )}
                     {bothRevealed && currentMatch.otherProfile.bio && (
-                      <div style={{ marginTop: '8px', padding: '8px', background: '#eafaf1', borderRadius: '6px' }}>
-                        <strong>Bio:</strong> {currentMatch.otherProfile.bio}
+                      <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <p className="font-semibold text-sm">Bio:</p>
+                        <p className="text-sm mt-1">{currentMatch.otherProfile.bio}</p>
                       </div>
                     )}
                     {!iRevealed && (
-                      <button className="btn-primary" style={{ marginTop: '12px', fontSize: '0.9rem' }} onClick={handleRevealProfile} disabled={revealing}>
+                      <button className="btn-primary mt-3 text-sm" onClick={handleRevealProfile} disabled={revealing}>
                         {revealing ? 'Revealing...' : 'Reveal My Profile'}
                       </button>
                     )}
                   </div>
                 )}
-                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '12px' }}>
+                <div className="flex-1 overflow-y-auto mb-4 space-y-2">
                   {messages.map(msg => (
-                    <div key={msg.id} style={{ textAlign: msg.senderId === userId ? 'right' : 'left', marginBottom: '8px' }}>
-                      <span style={{ display: 'inline-block', padding: '8px 12px', borderRadius: '12px', background: msg.senderId === userId ? '#6c5ce7' : '#eee', color: msg.senderId === userId ? 'white' : 'black' }}>
+                    <div key={msg.id} className={`flex ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}>
+                      <span className={`inline-block px-4 py-2 rounded-xl max-w-xs ${msg.senderId === userId ? 'bg-violet-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
                         {msg.content}
                       </span>
                     </div>
                   ))}
                 </div>
-                <form onSubmit={handleSend} style={{ display: 'flex', gap: '8px' }}>
-                  <input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type a message..." />
+                <form onSubmit={handleSend} className="flex gap-2">
+                  <input
+                    className="input flex-1"
+                    value={newMessage}
+                    onChange={e => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                  />
                   <button type="submit" className="btn-primary">Send</button>
                 </form>
               </>

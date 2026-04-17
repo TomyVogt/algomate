@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
 import { getProfile, getMatchesForUser, createMatch, updateMatchStatus, createFlag } from '@/lib/db';
 import { calculateCompatibility, generateComparison } from '@/lib/compatibility';
@@ -23,7 +23,6 @@ export default function MatchingPlayground() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [allUsers, setAllUsers] = useState<Array<{ id: string; profile: Profile }>>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [flagging, setFlagging] = useState(false);
   const [flagComment, setFlagComment] = useState('');
   const [userRole, setUserRole] = useState<string>('');
@@ -110,100 +109,100 @@ export default function MatchingPlayground() {
     await handleAction('decline');
   }
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50">
+      <Nav userRole={userRole} />
+      <div className="container-main"><p className="text-gray-500">Loading...</p></div>
+    </div>
+  );
 
   return (
-    <div>
-      <nav className="nav container">
-        <Link href="/">Algomate</Link>
-        <Link href="/profile">My Profile</Link>
-        <Link href="/matching-playground" className="active">Matching Playground</Link>
-        <Link href="/messages">Messages</Link>
-        {(userRole === 'admin' || userRole === 'mod') && <Link href="/admin">Admin</Link>}
-      </nav>
-      <div className="container" style={{ maxWidth: '700px' }}>
-        <h1>Matching Playground</h1>
-        <p style={{ color: '#666', marginBottom: '24px' }}>See how you compare with others. Only when you both match, you connect.</p>
+    <div className="min-h-screen bg-gray-50">
+      <Nav userRole={userRole} />
+      <div className="container-main max-w-2xl">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Matching Playground</h1>
+        <p className="text-gray-600 mb-6">See how you compare with others. Only when you both match, you connect.</p>
 
         {!otherProfile ? (
-          <div className="card" style={{ textAlign: 'center' }}>
-            <h2>No more profiles to compare</h2>
-            <p style={{ color: '#666' }}>Come back later when new people join!</p>
+          <div className="card text-center py-12">
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">No more profiles to compare</h2>
+            <p className="text-gray-500">Come back later when new people join!</p>
           </div>
         ) : (
           <div className="card">
-            <div style={{ textAlign: 'center' }}>
+            <div className="text-center mb-6">
               <div className="score-circle">{score?.toFixed(1)}</div>
-              <p style={{ color: '#666', fontSize: '0.9rem' }}>Compatibility Score</p>
+              <p className="text-gray-500 text-sm">Compatibility Score</p>
             </div>
 
             {comparison && (
               <div className="comparison-grid">
                 <div className="comparison-col">
-                  <strong>You</strong>
-                  <p>{comparison.displayName.a}</p>
-                  <p>Age: {comparison.age.a}</p>
-                  <p>Location: {comparison.location.a || '—'}</p>
-                  <p>Looking for: {comparison.lookingFor.a || '—'}</p>
+                  <p className="font-bold text-violet-600 mb-2">You</p>
+                  <p className="font-semibold">{comparison.displayName.a}</p>
+                  <p className="text-sm text-gray-600">Age: {comparison.age.a}</p>
+                  <p className="text-sm text-gray-600">{comparison.location.a || '—'}</p>
+                  <p className="text-sm text-gray-600">Looking for: {comparison.lookingFor.a || '—'}</p>
                 </div>
                 <div className="comparison-col">
-                  <strong>Them</strong>
-                  <p>{comparison.displayName.b}</p>
-                  <p>Age: {comparison.age.b}</p>
-                  <p>Location: {comparison.location.b || '—'}</p>
-                  <p>Looking for: {comparison.lookingFor.b || '—'}</p>
+                  <p className="font-bold text-emerald-600 mb-2">Them</p>
+                  <p className="font-semibold">{comparison.displayName.b}</p>
+                  <p className="text-sm text-gray-600">Age: {comparison.age.b}</p>
+                  <p className="text-sm text-gray-600">{comparison.location.b || '—'}</p>
+                  <p className="text-sm text-gray-600">Looking for: {comparison.lookingFor.b || '—'}</p>
                 </div>
               </div>
             )}
 
             {comparison && (comparison.sharedValues.length > 0 || comparison.sharedInterests.length > 0 || comparison.sharedHobbies.length > 0) && (
               <div className="shared-section">
-                <strong>Shared Values</strong>
-                <div style={{ marginTop: '8px' }}>
-                  {comparison.sharedValues.map(v => <span key={v} className="tag">{v}</span>)}
-                </div>
+                <p className="font-semibold text-indigo-700 mb-2">What you share</p>
+                {comparison.sharedValues.length > 0 && (
+                  <div className="mb-3">
+                    <span className="text-sm font-medium text-gray-700">Values: </span>
+                    {comparison.sharedValues.map(v => <span key={v} className="tag bg-violet-100 text-violet-700">{v}</span>)}
+                  </div>
+                )}
                 {comparison.sharedInterests.length > 0 && (
-                  <>
-                    <strong style={{ display: 'block', marginTop: '12px' }}>Shared Interests</strong>
-                    <div style={{ marginTop: '8px' }}>
-                      {comparison.sharedInterests.map(i => <span key={i} className="tag">{i}</span>)}
-                    </div>
-                  </>
+                  <div className="mb-3">
+                    <span className="text-sm font-medium text-gray-700">Interests: </span>
+                    {comparison.sharedInterests.map(i => <span key={i} className="tag bg-emerald-100 text-emerald-700">{i}</span>)}
+                  </div>
                 )}
                 {comparison.sharedHobbies.length > 0 && (
-                  <>
-                    <strong style={{ display: 'block', marginTop: '12px' }}>Shared Hobbies</strong>
-                    <div style={{ marginTop: '8px' }}>
-                      {comparison.sharedHobbies.map(h => <span key={h} className="tag">{h}</span>)}
-                    </div>
-                  </>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Hobbies: </span>
+                    {comparison.sharedHobbies.map(h => <span key={h} className="tag bg-amber-100 text-amber-700">{h}</span>)}
+                  </div>
                 )}
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
+            <div className="flex gap-3 justify-center mt-6">
               <button className="btn-match" onClick={() => handleAction('match')} disabled={processing}>Match</button>
               <button className="btn-decline" onClick={() => handleAction('decline')} disabled={processing}>Decline</button>
               <button className="btn-secondary" onClick={() => handleAction('disregard')} disabled={processing}>Disregard</button>
             </div>
 
             {!flagging ? (
-              <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                <button className="btn-danger" style={{ fontSize: '0.8rem', padding: '6px 12px' }} onClick={() => setFlagging(true)}>Flag as Dangerous</button>
+              <div className="text-center mt-4">
+                <button className="text-red-500 hover:text-red-700 text-sm hover:underline" onClick={() => setFlagging(true)}>
+                  Flag as Dangerous
+                </button>
               </div>
             ) : (
-              <div style={{ marginTop: '16px', padding: '12px', background: '#fff5f5', borderRadius: '8px', border: '1px solid #e74c3c' }}>
-                <p style={{ fontWeight: '600', marginBottom: '8px' }}>Why are you flagging this user?</p>
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="font-semibold text-red-700 mb-2">Why are you flagging this user?</p>
                 <textarea
+                  className="input bg-white"
                   value={flagComment}
                   onChange={e => setFlagComment(e.target.value)}
                   placeholder="Please describe why this user is dangerous (required)"
                   rows={3}
-                  style={{ marginBottom: '8px' }}
                 />
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn-danger" style={{ fontSize: '0.85rem' }} onClick={handleFlag} disabled={!flagComment.trim()}>Submit Flag</button>
-                  <button className="btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => { setFlagging(false); setFlagComment(''); }}>Cancel</button>
+                <div className="flex gap-2 mt-2">
+                  <button className="btn-danger text-sm" onClick={handleFlag} disabled={!flagComment.trim()}>Submit Flag</button>
+                  <button className="btn-secondary text-sm" onClick={() => { setFlagging(false); setFlagComment(''); }}>Cancel</button>
                 </div>
               </div>
             )}
