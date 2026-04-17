@@ -167,31 +167,33 @@ export default function Messages() {
               );
             })}
           </div>
-          <div className="card md:col-span-3 flex flex-row">
+          <div className="card md:col-span-3 flex flex-col">
             {!selected ? (
               <p className="text-center mt-12" style={{ color: '#666' }}>Select a conversation to start chatting</p>
             ) : (
               <>
                 {currentMatch?.otherProfile && (
-                  <div className="w-48 flex-shrink-0 flex flex-col" style={{ background: '#90c367' }}>
-                    <div className="p-4 flex flex-col items-center justify-center flex-1">
-                      <p className="font-bold text-lg text-center" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
-                      <p className="text-sm text-center mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                        {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
-                        Age {currentMatch.otherProfile.age}
-                      </p>
-                      {!iRevealed && (
-                        <button className="text-xs mt-3 px-3 py-2 rounded-lg font-medium" onClick={handleRevealProfile} disabled={revealing} style={{ background: 'white', color: '#166534' }}>
-                          {revealing ? 'Revealing...' : 'Disclose Full Profile'}
-                        </button>
-                      )}
-                      {bothRevealed && (
-                        <span className="text-xs mt-2" style={{ color: 'white' }}>✓ Profiles Shared</span>
-                      )}
-                      {!bothRevealed && iRevealed && (
-                        <span className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.7)' }}>Waiting...</span>
-                      )}
-                      <div className="mt-3">
+                  <div className="p-3 flex flex-col" style={{ background: '#90c367' }}>
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <div>
+                        <p className="font-bold text-lg" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
+                        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                          {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
+                          Age {currentMatch.otherProfile.age}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        {!iRevealed && (
+                          <button className="text-xs px-3 py-2 rounded-lg font-medium" onClick={handleRevealProfile} disabled={revealing} style={{ background: 'white', color: '#166534' }}>
+                            {revealing ? 'Revealing...' : 'Disclose Full Profile'}
+                          </button>
+                        )}
+                        {bothRevealed && (
+                          <span className="text-xs" style={{ color: 'white' }}>✓ Profiles Shared</span>
+                        )}
+                        {!bothRevealed && iRevealed && (
+                          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>Waiting...</span>
+                        )}
                         {!reporting && !reportSent && (
                           <button
                             className="text-xs px-2 py-1 rounded border"
@@ -207,7 +209,7 @@ export default function Messages() {
                       </div>
                     </div>
                     {reporting && (
-                      <div className="p-3 mx-2 mb-2 rounded text-xs" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
+                      <div className="mt-3 p-3 rounded text-xs" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
                         <p className="mb-1 font-medium" style={{ color: '#EF4444' }}>Report (50+ chars):</p>
                         <textarea
                           className="input bg-white w-full text-xs"
