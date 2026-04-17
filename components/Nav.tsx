@@ -19,7 +19,9 @@ export default function Nav({ userRole, unreadMessages }: NavProps) {
         <Link href="/messages" className={pathname === '/messages' ? 'nav-link-active' : 'nav-link'}>
           Messages
           {unreadMessages && unreadMessages > 0 && (
-            <span className="ml-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{unreadMessages}</span>
+            <span className="ml-1 bg-orange-500 text-white text-xs rounded-full min-w-6 h-5 px-1.5 flex items-center justify-center font-bold">
+              {unreadMessages > 99 ? '99+' : unreadMessages}
+            </span>
           )}
         </Link>
         {(userRole === 'admin' || userRole === 'mod') && (

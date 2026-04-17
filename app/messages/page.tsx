@@ -157,7 +157,9 @@ export default function Messages() {
                     </p>
                   </div>
                   {m.unreadCount && m.unreadCount > 0 && (
-                    <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: '#f97316', color: 'white' }}>{m.unreadCount}</span>
+                    <span className="rounded-full px-1.5 py-0.5 text-xs font-bold min-w-6 flex items-center justify-center" style={{ background: '#f97316', color: 'white' }}>
+                      {m.unreadCount > 99 ? '99+' : m.unreadCount}
+                    </span>
                   )}
                 </div>
               );
