@@ -171,8 +171,8 @@ export default function Messages() {
             ) : (
               <>
                 {currentMatch?.otherProfile && (
-                  <div className="w-48 flex-shrink-0 p-4 rounded-l-lg flex flex-col items-center justify-center" style={{ background: messages.length > 0 ? '#849fcf' : '#90c367' }}>
-                    <p className="font-bold text-lg text-center" style={{ color: messages.length > 0 ? 'white' : 'white' }}>{currentMatch.otherProfile.displayName}</p>
+                  <div className="w-48 flex-shrink-0 p-4 rounded-l-lg flex flex-col items-center justify-center" style={{ background: '#90c367' }}>
+                    <p className="font-bold text-lg text-center" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
                     <p className="text-sm text-center mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
                       {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
                       Age {currentMatch.otherProfile.age}
