@@ -1,11 +1,3 @@
-export interface User {
-  id: string;
-  email: string;
-  passwordHash: string;
-  role: 'user' | 'admin' | 'mod';
-  createdAt: number;
-}
-
 export interface Profile {
   userId: string;
   displayName: string;
@@ -16,6 +8,14 @@ export interface Profile {
   lookingFor: string;
   values: string[];
   hobbies: string[];
+}
+
+export interface User {
+  id: string;
+  email: string;
+  passwordHash: string;
+  role: 'user' | 'admin' | 'mod';
+  createdAt: number;
 }
 
 export interface Match {

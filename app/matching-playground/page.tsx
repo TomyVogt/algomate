@@ -130,39 +130,35 @@ export default function MatchingPlayground() {
                 <div className="comparison-col">
                   <p className="font-bold mb-2" style={{ color: '#90c367' }}>You</p>
                   <p className="font-semibold">{comparison.displayName.a}</p>
-                  <p className="text-sm" style={{ color: '#666' }}>Age: {comparison.age.a}</p>
-                  <p className="text-sm" style={{ color: '#666' }}>{comparison.location.a || '—'}</p>
-                  <p className="text-sm" style={{ color: '#666' }}>Looking for: {comparison.lookingFor.a || '—'}</p>
+                  <p className="text-sm mt-2" style={{ color: '#666' }}>{comparison.bio.a || 'No bio yet'}</p>
                 </div>
                 <div className="comparison-col">
                   <p className="font-bold mb-2" style={{ color: '#849fcf' }}>Them</p>
                   <p className="font-semibold">{comparison.displayName.b}</p>
-                  <p className="text-sm" style={{ color: '#666' }}>Age: {comparison.age.b}</p>
-                  <p className="text-sm" style={{ color: '#666' }}>{comparison.location.b || '—'}</p>
-                  <p className="text-sm" style={{ color: '#666' }}>Looking for: {comparison.lookingFor.b || '—'}</p>
+                  <p className="text-sm mt-2" style={{ color: '#666' }}>{comparison.bio.b || 'No bio yet'}</p>
                 </div>
               </div>
             )}
 
             {comparison && (comparison.sharedValues.length > 0 || comparison.sharedInterests.length > 0 || comparison.sharedHobbies.length > 0) && (
               <div className="shared-section">
-                <p className="font-semibold mb-2" style={{ color: '#111' }}>What you share</p>
+                <p className="font-semibold mb-2">What you share</p>
                 {comparison.sharedValues.length > 0 && (
-                  <div className="mb-3">
+                  <div className="mb-2">
                     <span className="text-sm font-medium">Values: </span>
-                    {comparison.sharedValues.map(v => <span key={v} className="tag" style={{ background: '#dcfce7', color: '#166534' }}>{v}</span>)}
+                    {comparison.sharedValues.map((v: string) => <span key={v} className="tag" style={{ background: '#dcfce7', color: '#166534' }}>{v}</span>)}
                   </div>
                 )}
                 {comparison.sharedInterests.length > 0 && (
-                  <div className="mb-3">
+                  <div className="mb-2">
                     <span className="text-sm font-medium">Interests: </span>
-                    {comparison.sharedInterests.map(i => <span key={i} className="tag" style={{ background: '#dbeafe', color: '#1e40af' }}>{i}</span>)}
+                    {comparison.sharedInterests.map((i: string) => <span key={i} className="tag" style={{ background: '#dbeafe', color: '#1e40af' }}>{i}</span>)}
                   </div>
                 )}
                 {comparison.sharedHobbies.length > 0 && (
                   <div>
                     <span className="text-sm font-medium">Hobbies: </span>
-                    {comparison.sharedHobbies.map(h => <span key={h} className="tag" style={{ background: '#fef3c7', color: '#92400e' }}>{h}</span>)}
+                    {comparison.sharedHobbies.map((h: string) => <span key={h} className="tag" style={{ background: '#fef3c7', color: '#92400e' }}>{h}</span>)}
                   </div>
                 )}
               </div>

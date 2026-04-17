@@ -6,14 +6,47 @@ import { verifyToken } from '@/lib/auth';
 import { getProfile, updateProfile, deleteUser } from '@/lib/db';
 import { Profile } from '@/lib/types';
 
+function parseBio(bio: string): Partial<Profile> {
+  const lower = bio.toLowerCase();
+  const words = bio.split(/\s+/);
+
+  const interestKeywords = ['hiking', 'reading', 'gaming', 'cooking', 'sports', 'music', 'movies', 'travel', 'photography', 'art', 'painting', 'writing', 'dancing', 'yoga', 'running', 'cycling', 'swimming', 'skiing', 'surfing', 'climbing', 'fishing', 'hunting', 'birdwatching', 'gardening', 'meditation', 'movies', 'series', 'board games', 'video games', 'chess', 'puzzles', 'coding', 'programming', 'sci-fi', 'fantasy', 'romance', 'thriller', 'horror', 'documentary', 'comedy', 'anime', 'manga', 'crafts', 'sewing', 'knitting', 'pottery', 'woodworking', 'metalwork', 'electronics', 'robotics'];
+
+  const valueKeywords = ['honesty', 'loyalty', 'respect', 'kindness', 'courage', 'patience', 'humor', 'ambition', 'creativity', 'curiosity', 'independence', 'family', 'friendship', 'adventure', 'growth', 'learning', 'success', 'wealth', 'health', 'fitness', 'spirituality', 'philosophy', 'nature', 'community', 'tradition', 'freedom', 'justice', 'fairness', 'integrity', 'wisdom'];
+
+  const hobbyKeywords = ['hiking', 'reading', 'gaming', 'cooking', 'sports', 'music', 'movies', 'travel', 'photography', 'art', 'painting', 'writing', 'dancing', 'yoga', 'running', 'cycling', 'swimming', 'skiing', 'surfing', 'climbing', 'fishing', 'gardening', 'chess', 'puzzles', 'coding', 'crafts', 'sewing', 'knitting', 'pottery', 'woodworking'];
+
+  const interests: string[] = [];
+  const values: string[] = [];
+  const hobbies: string[] = [];
+
+  interestKeywords.forEach(k => { if (lower.includes(k) && !interests.includes(k)) interests.push(k); });
+  valueKeywords.forEach(k => { if (lower.includes(k) && !values.includes(k)) values.push(k); });
+  hobbyKeywords.forEach(k => { if (lower.includes(k) && !hobbies.includes(k)) hobbies.push(k); });
+
+  let location = '';
+  let age = 0;
+  let lookingFor = '';
+
+  const locationMatch = bio.match(/location[:\s]+([A-Za-z\s]+?)(?:\.|$|,)/i);
+  if (locationMatch) location = locationMatch[1].trim();
+
+  const ageMatch = bio.match(/age[:\s]+(\d+)/i);
+  if (ageMatch) age = parseInt(ageMatch[1]);
+
+  const lookingMatch = bio.match(/looking for[:\s]+([^\.]+)/i);
+  if (lookingMatch) lookingFor = lookingMatch[1].trim();
+
+  return { interests, values, hobbies, location, age, lookingFor };
+}
+
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Partial<Profile>>({});
+  const [bio, setBio] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('user');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [tags, setTags] = useState({ interests: '', values: '', hobbies: '' });
   const router = useRouter();
 
   useEffect(() => {
@@ -26,12 +59,17 @@ export default function ProfilePage() {
       setUserRole(payload.role);
       const data = await getProfile(payload.userId);
       if (data) {
-        setProfile(data);
-        setTags({
-          interests: data.interests.join(', '),
-          values: data.values.join(', '),
-          hobbies: data.hobbies.join(', '),
-        });
+        const fullBio = [
+          data.bio,
+          data.displayName ? `Name: ${data.displayName}` : '',
+          data.age ? `Age: ${data.age}` : '',
+          data.location ? `Location: ${data.location}` : '',
+          data.lookingFor ? `Looking for: ${data.lookingFor}` : '',
+          data.interests.length ? `Interests: ${data.interests.join(', ')}` : '',
+          data.hobbies.length ? `Hobbies: ${data.hobbies.join(', ')}` : '',
+          data.values.length ? `Values: ${data.values.join(', ')}` : '',
+        ].filter(Boolean).join('\n');
+        setBio(fullBio);
       }
       setLoading(false);
     }
@@ -43,13 +81,24 @@ export default function ProfilePage() {
     if (!userId) return;
     setSaving(true);
     setMessage('');
-    const data: Partial<Profile> = {
-      ...profile,
-      interests: tags.interests.split(',').map(s => s.trim()).filter(Boolean),
-      values: tags.values.split(',').map(s => s.trim()).filter(Boolean),
-      hobbies: tags.hobbies.split(',').map(s => s.trim()).filter(Boolean),
-    };
-    await updateProfile(userId, data);
+
+    const lines = bio.split('\n');
+    let displayName = '';
+    let bioText = bio;
+
+    for (const line of lines) {
+      if (line.toLowerCase().startsWith('name:')) displayName = line.split(':')[1].trim();
+    }
+    bioText = lines.filter(l => !l.toLowerCase().startsWith('name:') && !l.toLowerCase().startsWith('age:') && !l.toLowerCase().startsWith('location:') && !l.toLowerCase().startsWith('looking for:') && !l.toLowerCase().startsWith('interests:') && !l.toLowerCase().startsWith('hobbies:') && !l.toLowerCase().startsWith('values:')).join('\n').trim();
+
+    const parsed = parseBio(bio);
+
+    await updateProfile(userId, {
+      displayName: displayName || 'User',
+      bio: bioText,
+      ...parsed
+    });
+
     setMessage('Profile saved!');
     setSaving(false);
   }
@@ -78,36 +127,17 @@ export default function ProfilePage() {
           {message && <p className="success bg-emerald-50 p-3 rounded-lg mb-4">{message}</p>}
           <form onSubmit={handleSave}>
             <div className="form-group">
-              <label className="label">Display Name</label>
-              <input type="text" className="input" value={profile.displayName || ''} onChange={e => setProfile({ ...profile, displayName: e.target.value })} placeholder="How you want to be seen" />
-            </div>
-            <div className="form-group">
-              <label className="label">Age</label>
-              <input type="number" className="input" value={profile.age || ''} onChange={e => setProfile({ ...profile, age: parseInt(e.target.value) || 0 })} placeholder="Your age" />
-            </div>
-            <div className="form-group">
-              <label className="label">Location</label>
-              <input type="text" className="input" value={profile.location || ''} onChange={e => setProfile({ ...profile, location: e.target.value })} placeholder="City or area" />
-            </div>
-            <div className="form-group">
-              <label className="label">Looking For</label>
-              <input type="text" className="input" value={profile.lookingFor || ''} onChange={e => setProfile({ ...profile, lookingFor: e.target.value })} placeholder="e.g. Activity partners, Deep conversations" />
-            </div>
-            <div className="form-group">
-              <label className="label">Bio</label>
-              <textarea className="input" value={profile.bio || ''} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="Tell others about yourself..." rows={4} />
-            </div>
-            <div className="form-group">
-              <label className="label">Interests (comma separated)</label>
-              <input type="text" className="input" value={tags.interests} onChange={e => setTags({ ...tags, interests: e.target.value })} placeholder="e.g. hiking, cooking, gaming" />
-            </div>
-            <div className="form-group">
-              <label className="label">Values (comma separated)</label>
-              <input type="text" className="input" value={tags.values} onChange={e => setTags({ ...tags, values: e.target.value })} placeholder="e.g. honesty, loyalty, adventure" />
-            </div>
-            <div className="form-group">
-              <label className="label">Hobbies (comma separated)</label>
-              <input type="text" className="input" value={tags.hobbies} onChange={e => setTags({ ...tags, hobbies: e.target.value })} placeholder="e.g. chess, painting, running" />
+              <label className="label">Tell others about yourself — your story, interests, values and what you're looking for</label>
+              <textarea
+                className="input"
+                value={bio}
+                onChange={e => setBio(e.target.value)}
+                placeholder={'Name: YourName\nAge: 25\nLocation: Berlin\nLooking for: Friends for adventures\n\nI am a passionate developer who loves exploring new technologies. In my free time I enjoy hiking in the mountains and reading sci-fi novels. I value honesty and loyalty above all. Looking for friends who share similar interests and enjoy deep conversations about philosophy and technology.'}
+                rows={12}
+              />
+              <p className="text-sm mt-2" style={{ color: '#666' }}>
+                Tip: You can include keywords like "hiking", "gaming", "honesty", "cooking" etc. in your bio — they will be automatically detected for matching!
+              </p>
             </div>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
           </form>

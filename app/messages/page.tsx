@@ -120,7 +120,6 @@ export default function Messages() {
                 {currentMatch?.otherProfile && (
                   <div className="pb-4 mb-4" style={{ borderBottom: '1px solid #e5e5e5' }}>
                     <p className="font-bold text-lg">{currentMatch.otherProfile.displayName}</p>
-                    <p className="text-sm" style={{ color: '#666' }}>{currentMatch.otherProfile.location} · Age {currentMatch.otherProfile.age}</p>
                     {!bothRevealed && (
                       <div className="mt-3 p-3 rounded-lg" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
                         {!iRevealed ? (
