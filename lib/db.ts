@@ -253,7 +253,7 @@ export async function createMatchWithMutualCheck(userA: string, userB: string, s
     if (existingAsB.statusA === 'match') {
       existingAsB.statusB = 'match';
       existingAsB.score = score;
-      existingAsB.profileRevealedB = true;
+      existingAsB.profileRevealedB = false;
       setStore(MATCHES, matches);
       return { match: existingAsB, isMutual: true };
     }
@@ -263,7 +263,7 @@ export async function createMatchWithMutualCheck(userA: string, userB: string, s
     if (existingAsA.statusB === 'match') {
       existingAsA.statusA = 'match';
       existingAsA.score = score;
-      existingAsA.profileRevealedA = true;
+      existingAsA.profileRevealedA = false;
       setStore(MATCHES, matches);
       return { match: existingAsA, isMutual: true };
     }
@@ -276,7 +276,7 @@ export async function createMatchWithMutualCheck(userA: string, userB: string, s
     score,
     statusA: 'match',
     statusB: 'pending',
-    profileRevealedA: true,
+    profileRevealedA: false,
     profileRevealedB: false,
     createdAt: Date.now(),
   };
