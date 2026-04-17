@@ -132,14 +132,14 @@ export default function MatchingPlayground() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={0} />
+      <Nav userRole={userRole} unreadMessages={0} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={mutualMatches.length} />
+      <Nav userRole={userRole} unreadMessages={0} />
       {showMatchNotification && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
           <span className="text-xl">🎉</span>

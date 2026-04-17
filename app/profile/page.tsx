@@ -107,14 +107,14 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={0} />
+      <Nav userRole={userRole} unreadMessages={0} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={mutualMatchCount} />
+      <Nav userRole={userRole} unreadMessages={0} />
       <div className="container-main max-w-2xl">
         <div className="card">
           <h1 className="headline text-2xl font-bold mb-6">My Profile</h1>

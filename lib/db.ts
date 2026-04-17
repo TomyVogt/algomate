@@ -138,6 +138,21 @@ export async function getMessages(matchId: string): Promise<Message[]> {
   return messages.filter(m => m.matchId === matchId).sort((a, b) => a.createdAt - b.createdAt);
 }
 
+export async function getUnreadCount(matchId: string, userId: string): Promise<number> {
+  await initDB();
+  const lastReadKey = `algomate_lastread_${matchId}_${userId}`;
+  const lastRead = localStorage.getItem(lastReadKey);
+  const lastReadTime = lastRead ? parseInt(lastRead) : 0;
+  const messages = getStore<Message>(MESSAGES);
+  return messages.filter(m => m.matchId === matchId && m.senderId !== userId && m.createdAt > lastReadTime).length;
+}
+
+export async function markMessagesAsRead(matchId: string, userId: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const lastReadKey = `algomate_lastread_${matchId}_${userId}`;
+  localStorage.setItem(lastReadKey, Date.now().toString());
+}
+
 export async function sendMessage(matchId: string, senderId: string, content: string, createdAt?: number): Promise<Message> {
   await initDB();
   const messages = getStore<Message>(MESSAGES);

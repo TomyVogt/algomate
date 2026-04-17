@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getMutualMatches, getMessages, sendMessage, getProfile, revealProfile, createFlag, getUserById } from '@/lib/db';
+import { getMutualMatches, getMessages, sendMessage, getProfile, revealProfile, createFlag, getUserById, getUnreadCount, markMessagesAsRead } from '@/lib/db';
 import { Match, Message, Profile, User } from '@/lib/types';
 
 function getCookie(name: string): string | null {
@@ -14,6 +14,7 @@ function getCookie(name: string): string | null {
 interface EnrichedMatch extends Match {
   otherProfile?: Profile;
   otherUser?: User;
+  unreadCount?: number;
 }
 
 export default function Messages() {
@@ -38,7 +39,8 @@ export default function Messages() {
         const otherId = m.userA === uid ? m.userB : m.userA;
         const prof = await getProfile(otherId);
         const user = await getUserById(otherId);
-        return { ...m, otherProfile: prof || undefined, otherUser: user || undefined };
+        const unread = await getUnreadCount(m.id, uid);
+        return { ...m, otherProfile: prof || undefined, otherUser: user || undefined, unreadCount: unread };
       })
     );
     setMatches(enriched);
@@ -66,6 +68,10 @@ export default function Messages() {
     setReportComment('');
     const msgs = await getMessages(matchId);
     setMessages(msgs);
+    if (userId) {
+      await markMessagesAsRead(matchId, userId);
+      await loadMatches(userId);
+    }
   }
 
   useEffect(() => {
@@ -117,7 +123,7 @@ export default function Messages() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={matches.length} />
+      <Nav userRole={userRole} unreadMessages={matches.reduce((sum, m) => sum + (m.unreadCount || 0), 0)} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
@@ -128,7 +134,7 @@ export default function Messages() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={matches.length} />
+      <Nav userRole={userRole} unreadMessages={matches.reduce((sum, m) => sum + (m.unreadCount || 0), 0)} />
       <div className="container-main">
         <h1 className="headline text-3xl font-bold mb-6">Messages</h1>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4" style={{ height: '70vh' }}>
@@ -141,13 +147,18 @@ export default function Messages() {
                 <div
                   key={m.id}
                   onClick={() => selectMatch(m.id)}
-                  className="p-3 rounded-lg cursor-pointer mb-1 transition-colors"
+                  className="p-3 rounded-lg cursor-pointer mb-1 transition-colors flex justify-between items-center"
                   style={{ background: selected === m.id ? '#dbeafe' : 'transparent' }}
                 >
-                  <p className="font-semibold">{m.otherProfile?.displayName || 'Loading...'}</p>
-                  <p className="text-xs mt-1" style={{ color: '#666' }}>
-                    {matchBothRevealed ? '✓ Profiles revealed' : matchIRevealed ? '✓ You revealed yours' : '🔒 Profiles hidden'}
-                  </p>
+                  <div>
+                    <p className="font-semibold">{m.otherProfile?.displayName || 'Loading...'}</p>
+                    <p className="text-xs mt-1" style={{ color: '#666' }}>
+                      {matchBothRevealed ? '✓ Profiles revealed' : matchIRevealed ? '✓ You revealed yours' : '🔒 Profiles hidden'}
+                    </p>
+                  </div>
+                  {m.unreadCount && m.unreadCount > 0 && (
+                    <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: '#f97316', color: 'white' }}>{m.unreadCount}</span>
+                  )}
                 </div>
               );
             })}

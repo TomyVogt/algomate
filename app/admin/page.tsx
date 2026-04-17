@@ -57,14 +57,14 @@ export default function Admin() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={0} />
+      <Nav userRole={userRole} unreadMessages={0} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} newMutualMatches={mutualMatchCount} />
+      <Nav userRole={userRole} unreadMessages={0} />
       <div className="container-main">
         <h1 className="headline text-3xl font-bold mb-2">
           Admin Panel — {userRole === 'admin' ? 'Administrator' : 'Moderator'}

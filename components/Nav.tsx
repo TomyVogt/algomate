@@ -4,10 +4,10 @@ import { usePathname } from 'next/navigation';
 
 interface NavProps {
   userRole?: string;
-  newMutualMatches?: number;
+  unreadMessages?: number;
 }
 
-export default function Nav({ userRole, newMutualMatches }: NavProps) {
+export default function Nav({ userRole, unreadMessages }: NavProps) {
   const pathname = usePathname();
 
   return (
@@ -18,8 +18,8 @@ export default function Nav({ userRole, newMutualMatches }: NavProps) {
         <Link href="/matching-playground" className={pathname === '/matching-playground' ? 'nav-link-active' : 'nav-link'}>Playground</Link>
         <Link href="/messages" className={pathname === '/messages' ? 'nav-link-active' : 'nav-link'}>
           Messages
-          {newMutualMatches && newMutualMatches > 0 && (
-            <span className="ml-1 bg-emerald-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{newMutualMatches}</span>
+          {unreadMessages && unreadMessages > 0 && (
+            <span className="ml-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{unreadMessages}</span>
           )}
         </Link>
         {(userRole === 'admin' || userRole === 'mod') && (
