@@ -62,6 +62,15 @@ export default function Messages() {
     load();
   }, [router]);
 
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (userId) {
+        await loadMatches(userId);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
   async function selectMatch(matchId: string) {
     setSelected(matchId);
     setReportSent(false);
