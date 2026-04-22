@@ -20,9 +20,9 @@ export default function ProfilePage() {
   const [userRole, setUserRole] = useState<string>('user');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [geocoding, setGeocoding] = useState(false);
   const [message, setMessage] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'searching' | 'found' | 'notfound'>('idle');
   const [mutualMatchCount, setMutualMatchCount] = useState(0);
   const router = useRouter();
 
@@ -40,14 +40,18 @@ export default function ProfilePage() {
       if (data) {
         setDisplayName(data.displayName || '');
         setAge(data.age || 18);
-        setLocation(data.location || '');
         setBio(data.bio || '');
         setFriendSex(data.friendSex || 'Male');
         setFriendMinAge(data.friendMinAge || 18);
         setFriendMaxAge(data.friendMaxAge || 99);
         setMaxDistance(data.maxDistance || 150);
         if (data.latitude && data.longitude) {
+          setLocation(data.location || '');
           setLocationCoords({ lat: data.latitude, lon: data.longitude });
+          setLocationStatus('found');
+        } else if (data.location) {
+          setLocation(data.location);
+          setLocationStatus('idle');
         }
       }
       setLoading(false);
@@ -55,37 +59,39 @@ export default function ProfilePage() {
     load();
   }, [router]);
 
+  async function handleLocationChange(value: string) {
+    setLocation(value);
+    setLocationCoords(null);
+    setLocationStatus('idle');
+
+    if (!value.trim()) return;
+    setLocationStatus('searching');
+    const geo = await geocodeSwissLocation(value.trim());
+    if (geo) {
+      setLocationCoords({ lat: geo.latitude, lon: geo.longitude });
+      setLocation(geo.name);
+      setLocationStatus('found');
+    } else {
+      setLocationStatus('notfound');
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!userId) return;
+    if (!locationCoords) {
+      setMessage('Please enter a valid Swiss location first');
+      return;
+    }
     setSaving(true);
     setMessage('');
-    setGeocoding(true);
-
-    let latitude: number | undefined;
-    let longitude: number | undefined;
-
-    if (location.trim()) {
-      const geo = await geocodeSwissLocation(location.trim());
-      if (geo) {
-        latitude = geo.latitude;
-        longitude = geo.longitude;
-        setLocationCoords({ lat: geo.latitude, lon: geo.longitude });
-        setMessage('Profile saved! Location found: ' + geo.name);
-      } else {
-        setMessage('Profile saved! (Location not found - please check spelling)');
-      }
-    } else {
-      setLocationCoords(null);
-      setMessage('Profile saved!');
-    }
 
     await updateProfile(userId, {
       displayName: displayName || 'Anonymous',
       age,
       location,
-      latitude,
-      longitude,
+      latitude: locationCoords.lat,
+      longitude: locationCoords.lon,
       bio,
       friendSex,
       friendMinAge,
@@ -93,7 +99,7 @@ export default function ProfilePage() {
       maxDistance,
     });
 
-    setGeocoding(false);
+    setMessage('Profile saved with confirmed location: ' + location);
     setSaving(false);
   }
 
@@ -130,11 +136,23 @@ export default function ProfilePage() {
             </div>
             <div className="form-group">
               <label className="label">Location (Swiss city or village)</label>
-              <input type="text" className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Zurich, Bern, Geneva, Basel, etc." />
-              {locationCoords && (
+              <input
+                type="text"
+                className="input"
+                value={location}
+                onChange={e => handleLocationChange(e.target.value)}
+                placeholder="Zurich, Bern, Geneva, Basel, etc."
+              />
+              {locationStatus === 'searching' && (
+                <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Searching...</p>
+              )}
+              {locationStatus === 'found' && locationCoords && (
                 <p className="text-sm mt-1" style={{ color: '#10B981' }}>
-                  Location found: {locationCoords.lat.toFixed(4)}, {locationCoords.lon.toFixed(4)}
+                  Found: {locationCoords.lat.toFixed(4)}, {locationCoords.lon.toFixed(4)}
                 </p>
+              )}
+              {locationStatus === 'notfound' && (
+                <p className="text-sm mt-1" style={{ color: '#EF4444' }}>Location not found — please check spelling</p>
               )}
             </div>
             <div className="form-group">
@@ -163,8 +181,8 @@ export default function ProfilePage() {
               <label className="label">Max Distance (km)</label>
               <input type="number" className="input" value={maxDistance} onChange={e => setMaxDistance(parseInt(e.target.value) || 150)} min={1} max={50000} />
             </div>
-            <button type="submit" className="btn-primary" disabled={saving || geocoding}>
-              {saving || geocoding ? 'Saving & Finding Location...' : 'Save Profile'}
+            <button type="submit" className="btn-primary" disabled={saving || locationStatus === 'searching'}>
+              {saving ? 'Saving...' : 'Save Profile'}
             </button>
           </form>
         </div>

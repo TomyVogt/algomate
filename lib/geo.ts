@@ -49,9 +49,16 @@ export async function geocodeSwissLocation(locationName: string): Promise<GeoLoc
   const result = await geocodeLocation(locationName);
   if (!result) return null;
 
-  if (result.country !== 'Switzerland' && !result.name.toLowerCase().includes('switzerland')) {
-    return null;
-  }
+  const countryOk =
+    result.country === 'Switzerland' ||
+    result.country === 'CH' ||
+    result.country === 'Schweiz' ||
+    result.country === ' Suisse' ||
+    result.country === 'Svizzera' ||
+    result.state?.toLowerCase().includes('switzerland') ||
+    result.state?.toLowerCase().includes('schweiz');
+
+  if (!countryOk) return null;
 
   return result;
 }
