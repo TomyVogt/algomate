@@ -316,10 +316,10 @@ function scorePolarity(score: number): Polarity {
 
 function intensityLabel(score: number): string {
   const s = clampInt(score, -2, 2);
-  if (s === 2) return "love";
+  if (s === 2) return "enjoy";
   if (s === 1) return "like";
-  if (s === -1) return "avoid";
-  if (s === -2) return "hate";
+  if (s === -1) return "cautious about";
+  if (s === -2) return "avoid";
   return "mention";
 }
 
@@ -335,7 +335,8 @@ function intensityMarker(score: number): string {
 function preferencePhrase(subject: "you" | "they", score: number, topic: string): string {
   const verb = intensityLabel(score);
   const mark = intensityMarker(score);
-  return subject + " " + verb + " " + topic + (mark ? " (" + mark + ")" : "");
+  const sub = subject === "you" ? "you" : "they";
+  return sub + " " + verb + " " + topic + (mark ? " (" + mark + ")" : "");
 }
 
 type PrefWithMeta = TopicPreference & { confidence: number; canon: string };
@@ -351,10 +352,10 @@ function preferenceConfidence(bioLower: string, topic: string): number {
   const end = idx + t.length + 40 > bioLower.length ? bioLower.length : idx + t.length + 40;
   const window = bioLower.slice(start, end);
 
-  const strongPos = /\b(love|obsessed|addicted|passionate|fanatic|die\s*hard)\b/.test(window);
-  const strongNeg = /\b(hate|can'?t\s*stand|cannot\s*stand|despise)\b/.test(window);
-  const mildPos = /\b(like|enjoy|into|keen|prefer)\b/.test(window);
-  const mildNeg = /\b(avoid|not\s*into|don'?t\s*like|do\s*not\s*like|no\s+|without)\b/.test(window);
+  const strongPos = /\b(love|obsessed|addicted|passionate|die\s*hard|avid|frequent)\b/.test(window);
+  const strongNeg = /\b(hate|can'?t\s*stand|cannot\s*stand|despise|never|avoid)\b/.test(window);
+  const mildPos = /\b(like|enjoy|keen|prefer|fond of)\b/.test(window);
+  const mildNeg = /\b(not\s*fan|no\s*fan|not\s*keen|reluctant)\b/.test(window);
 
   if (strongPos || strongNeg) return 2;
   if (mildPos || mildNeg) return 1;
@@ -591,57 +592,58 @@ function extractHardConstraints(bioLower: string): string[] {
 type Dim = { id: string; pos: string[]; neg: string[] };
 
 const KW_POS_SOCIAL = ["party", "parties", "events", "event", "meetup", "meetups", "social", "outgoing", "extrovert", "clubbing", "nightlife", "bar"];
-const KW_NEG_SOCIAL = ["introvert", "introverted", "quiet", "reserved", "homebody", "cozy", "cosy", "calm", "alone", "solitude", "recharge", "lowkey"];
-const KW_POS_PLANNING = ["planner", "planned", "organized", "organised", "structured", "schedule", "punctual", "punctuality", "routine", "list", "prepared", "plan"];
-const KW_NEG_PLANNING = ["spontaneous", "spontan", "impulsive", "chaotic", "lastminute", "unplanned", "random", "flexible", "winging", "messy", "disorganized", "unstructured"];
+const KW_NEG_SOCIAL = ["introvert", "introverted", "quiet", "reserved", "homebody", "cozy", "cosy", "alone", "solitude", "lowkey"];
+const KW_POS_PLANNING = ["planner", "planned", "organized", "organised", "structured", "schedule", "punctual", "routine", "list", "prepared", "plan"];
+const KW_NEG_PLANNING = ["spontaneous", "impulsive", "lastminute", "unplanned", "flexible", "winging", "messy", "disorganized", "unstructured"];
 const KW_POS_DEPTH = ["deep", "depth", "philosophy", "psychology", "meaningful", "introspective", "reflective", "thoughtful", "values", "purpose", "growth", "learning"];
-const KW_NEG_DEPTH = ["smalltalk", "banter", "casual", "light", "shallow", "surface", "chitchat", "fun", "silly", "memes", "vibes", "whatever"];
+const KW_NEG_DEPTH = ["small talk", "banter", "shallow", "surface", "chitchat"];
 const KW_POS_EARLY = ["early", "morning", "sunrise", "earlybird", "breakfast", "daytime", "brunch", "fresh", "awake", "productive", "routine", "sleep"];
-const KW_NEG_EARLY = ["night", "late", "nightowl", "nocturnal", "latenight", "midnight", "afterhours", "insomnia", "tired", "sleepin", "sleeping", "club"];
+const KW_NEG_EARLY = ["night", "late", "nightowl", "nocturnal", "latenight", "midnight", "afterhours", "insomnia", "sleepin", "sleeping", "club"];
 const KW_POS_OUTDOORS = ["outdoors", "nature", "hiking", "wandern", "mountains", "berge", "forest", "lakes", "camping", "trail", "freshair", "adventure"];
-const KW_NEG_OUTDOORS = ["indoors", "inside", "netflix", "couch", "sofa", "homebody", "cozy", "cosy", "gaming", "bed", "comfort", "lazy"];
+const KW_NEG_OUTDOORS = ["indoors", "inside", "netflix", "couch", "sofa", "homebody", "gaming", "bed", "lazy"];
 const KW_POS_DRINKS = ["beer", "wine", "cocktail", "drinks", "drinking", "bar", "bars", "pub", "aperol", "whiskey", "gin", "brewery"];
-const KW_NEG_DRINKS = ["sober", "sobriety", "nondrinker", "noalcohol", "dry", "teetotal", "abstinent", "recovery", "avoid", "clean", "health", "hangover"];
+const KW_NEG_DRINKS = ["sober", "sobriety", "nondrinker", "noalcohol", "dry", "teetotal", "abstinent", "recovery", "health"];
 const KW_POS_FIT = ["gym", "workout", "training", "fitness", "weights", "lifting", "strength", "fit", "cardio", "exercise", "run", "active"];
-const KW_NEG_FIT = ["sedentary", "couch", "inactive", "nosports", "never", "tired", "avoid", "hate", "nope", "unfit", "lazy", "injury"];
+const KW_NEG_FIT = ["sedentary", "couch", "inactive", "nosports", "never", "injury"];
 const KW_POS_TRAVEL = ["travel", "travelling", "reisen", "trip", "trips", "backpacking", "explore", "exploring", "countries", "flight", "hostel", "adventure"];
-const KW_NEG_TRAVEL = ["homebody", "settled", "notravel", "stay", "local", "routine", "anxiety", "fear", "planes", "expensive", "tired", "stress"];
+const KW_NEG_TRAVEL = ["homebody", "settled", "stay", "local", "routine", "staycation"];
 const KW_POS_FOODIE = ["foodie", "restaurants", "restaurant", "brunch", "tasting", "sushi", "ramen", "cooking", "try", "new", "dinner", "coffee"];
-const KW_NEG_FOODIE = ["picky", "plain", "simple", "boring", "same", "cheap", "diet", "allergy", "avoid", "hate", "nope", "never"];
+const KW_NEG_FOODIE = ["picky", "plain", "simple", "cheap", "allergy", "avoid"];
 const KW_POS_BOOKS = ["books", "reading", "read", "novels", "literature", "library", "kindle", "bookstore", "author", "fiction", "nonfiction", "poetry"];
-const KW_NEG_BOOKS = ["noreading", "hate", "boring", "never", "scrolling", "tiktok", "short", "lazy", "nope", "school", "forced", "audio"];
+const KW_NEG_BOOKS = ["noreading", "boring", "never", "scrolling", "tiktok", "audio"];
 const KW_POS_MUSIC = ["music", "concert", "concerts", "gigs", "festival", "festivals", "spotify", "playlist", "dj", "band", "singing", "listening"];
-const KW_NEG_MUSIC = ["nomusic", "hate", "silent", "quiet", "noise", "annoying", "headache", "boring", "never", "avoid", "nope", "mute"];
+const KW_NEG_MUSIC = ["nomusic", "hate", "silent", "quiet", "boring", "never", "avoid", "mute"];
 const KW_POS_MOVIES = ["movies", "movie", "cinema", "film", "films", "screen", "popcorn", "director", "actor", "watch", "netflix", "letterboxd"];
-const KW_NEG_MOVIES = ["nomovies", "hate", "boring", "never", "avoid", "sleep", "waste", "toolong", "nope", "tired", "scrolling", "busy"];
+const KW_NEG_MOVIES = ["nomovies", "hate", "boring", "never", "avoid", "nope"];
 const KW_POS_GAMING = ["gaming", "games", "videogames", "gamer", "console", "pc", "steam", "ps5", "xbox", "switch", "online", "ranked"];
-const KW_NEG_GAMING = ["nogames", "hate", "boring", "waste", "addicted", "avoid", "nope", "never", "childish", "screen", "lazy", "indoors"];
+const KW_NEG_GAMING = ["nogames", "hate", "boring", "waste", "avoid", "never", "nope"];
 const KW_POS_CREATIVE = ["creative", "create", "maker", "design", "art", "music", "write", "ideas", "build", "craft", "photography", "projects"];
-const KW_NEG_CREATIVE = ["notcreative", "practical", "logic", "numbers", "boring", "avoid", "hate", "nope", "never", "work", "busy", "serious"];
+const KW_NEG_CREATIVE = ["notcreative", "practical", "logic", "boring", "avoid", "hate", "never"];
 const KW_POS_TECH = ["tech", "gadgets", "ai", "coding", "geek", "nerd", "apps", "startup", "hardware", "software", "robot", "innovation"];
-const KW_NEG_TECH = ["notech", "analog", "offline", "paper", "simple", "oldschool", "avoid", "hate", "nope", "never", "privacy", "minimal"];
+const KW_NEG_TECH = ["notech", "analog", "offline", "simple", "oldschool", "avoid", "hate", "never"];
 const KW_POS_KIND = ["kind", "kindness", "respect", "empathy", "empathetic", "warm", "patient", "supportive", "gentle", "caring", "friendly", "sweet"];
-const KW_NEG_KIND = ["rude", "harsh", "cold", "mean", "aggressive", "blunt", "snark", "toxic", "drama", "argument", "hostile", "judgey"];
+const KW_NEG_KIND = ["rude", "harsh", "cold", "mean", "aggressive", "blunt", "toxic", "drama", "hostile", "judgey"];
 const KW_POS_DEBATE = ["debate", "discuss", "discussion", "argument", "opinions", "politics", "philosophy", "challenge", "critical", "logic", "question", "ideas"];
-const KW_NEG_DEBATE = ["peace", "noconflict", "avoid", "drama", "calm", "easy", "agree", "quiet", "nope", "never", "tired", "escape"];
+const KW_NEG_DEBATE = ["peace", "noconflict", "avoid", "drama", "calm", "easy", "agree", "quiet"];
 const KW_POS_MINIMAL = ["minimalism", "minimalist", "simple", "clean", "tidy", "declutter", "less", "order", "space", "calm", "neutral", "organized"];
-const KW_NEG_MINIMAL = ["maximalist", "stuff", "clutter", "messy", "collections", "decor", "colors", "chaos", "crowded", "shopping", "impulse", "things"];
+const KW_NEG_MINIMAL = ["maximalist", "stuff", "clutter", "messy", "collections", "decor", "colors", "chaos", "crowded", "shopping"];
 const KW_POS_CITY = ["city", "urban", "downtown", "restaurants", "nightlife", "culture", "events", "transport", "busy", "buzz", "walkable", "cafes"];
-const KW_NEG_CITY = ["countryside", "rural", "village", "quiet", "nature", "space", "calm", "mountains", "forest", "farm", "slow", "remote"];
+const KW_NEG_CITY = ["countryside", "rural", "village", "quiet", "nature", "space", "mountains", "farm", "slow", "remote"];
 const KW_POS_PETS = ["pets", "animals", "pet", "rescue", "adopt", "cute", "cuddles", "vet", "walks", "play", "care", "love"];
-const KW_NEG_PETS = ["allergy", "nopets", "mess", "hair", "smell", "dirty", "avoid", "hate", "nope", "never", "noise", "scratch"];
+const KW_NEG_PETS = ["allergy", "nopets", "mess", "hair", "smell", "dirty", "avoid", "hate", "never", "noise"];
 const KW_POS_SMOKE = ["smoking", "smoker", "cigarettes", "cigs", "nicotine", "rolling", "vape", "hookah", "shisha", "smoke", "break", "habit"];
-const KW_NEG_SMOKE = ["nonsmoker", "nosmoking", "quit", "health", "avoid", "hate", "nope", "never", "smell", "asthma", "allergy", "clean"];
+const KW_NEG_SMOKE = ["nonsmoker", "nosmoking", "quit", "health", "avoid", "hate", "smell", "asthma", "allergy", "clean"];
 const KW_POS_SPORTS_WATCH = ["sportsfan", "watch", "watching", "match", "game", "stadium", "tickets", "league", "nba", "nfl", "f1", "championsleague"];
-const KW_NEG_SPORTS_WATCH = ["nosports", "hate", "avoid", "nope", "never", "boring", "crowds", "noise", "time", "dumb", "yawn", "overpaid"];
+const KW_NEG_SPORTS_WATCH = ["nosports", "hate", "avoid", "boring", "crowds", "noise", "time", "dumb"];
 
 const DIM_LABELS: Record<string, string> = {
-  social: "social vibe", planning: "planning vs spontaneity", depth: "depth vs light chat",
-  rhythm: "schedule (early vs late)", outdoors: "outdoors vs indoors", drinks: "drinks (party vs sober)",
-  fitness: "activity level", travel: "travel appetite", foodie: "food curiosity", books: "reading",
-  music: "music", movies: "movies", gaming: "gaming", creative: "creative energy", tech: "tech vibe",
-  kindness: "tone (kind vs blunt)", debate: "debate tolerance", minimalism: "minimalism",
-  citylife: "city vs countryside", pets: "pets", smoking: "smoking", sportwatching: "watching sports",
+  social: "socializing", planning: "planning", depth: "conversation depth",
+  rhythm: "schedule", outdoors: "outdoor activities", drinks: "drinking",
+  fitness: "exercise", travel: "travel", foodie: "food", books: "reading",
+  music: "music", movies: "movies", gaming: "gaming", creative: "creative hobbies",
+  tech: "technology", kindness: "communication style", debate: "discussing opinions",
+  minimalism: "minimalism", citylife: "city vs countryside", pets: "pets",
+  smoking: "smoking", sportwatching: "watching sports",
 };
 
 function makeDim(id: string, pos: string[], neg: string[]): Dim {
@@ -879,8 +881,9 @@ function traitOverlapLine(ts: TraitSignal[]): string {
   for (let i = 0; i < ts.length; i++) {
     const t = ts[i];
     if (t.valA !== 0 && t.valB !== 0 && t.valA === t.valB) {
-      const side = t.valA === 1 ? "lean " + t.label : "both avoid " + t.label;
-      return side;
+      if (t.valA === 1) return "both mention " + t.label;
+      if (t.valA === -1) return "both seem cautious about " + t.label;
+      return "";
     }
   }
   return "";
@@ -890,9 +893,9 @@ function traitContrastLine(ts: TraitSignal[]): string {
   for (let i = 0; i < ts.length; i++) {
     const t = ts[i];
     if (t.valA !== 0 && t.valB !== 0 && t.valA !== t.valB) {
-      const aSide = t.valA === 1 ? "you: " + (t.aHit || t.label) : "you: " + (t.aHit || ("not " + t.label));
-      const bSide = t.valB === 1 ? "them: " + (t.bHit || t.label) : "them: " + (t.bHit || ("not " + t.label));
-      return t.label + ": " + aSide + "; " + bSide;
+      const aSide = t.valA === 1 ? (t.aHit || t.label) : ("not " + (t.aHit || t.label));
+      const bSide = t.valB === 1 ? (t.bHit || t.label) : ("not " + (t.bHit || t.label));
+      return "you: " + aSide + "; them: " + bSide;
     }
   }
   return "";
@@ -1057,18 +1060,18 @@ function generateConversationStarters(shared: string[], onlyA: string[], onlyB: 
     if (!seen[valuesShared[i]]) { starters.push(valuesShared[i]); seen[valuesShared[i]] = true; }
   }
   if (starters.length < 5) {
-    const defaults = ["hobbies", "interests", "music", "travel", "food", "movies", "books", "sports", " gaming", "cooking"];
+    const defaults = ["hobbies", "interests", "music", "travel", "food", "movies", "books", "sports", "gaming", "cooking"];
     for (let i = 0; i < defaults.length && starters.length < 10; i++) {
       if (!seen[defaults[i]]) { starters.push(defaults[i]); seen[defaults[i]] = true; }
     }
   }
 
-  if (starters.length === 0) return "introduce yourselves and share your stories";
-  if (starters.length === 1) return "discuss " + starters[0];
-  if (starters.length === 2) return "discuss " + starters[0] + " and " + starters[1];
-  if (starters.length === 3) return "discuss " + starters[0] + ", " + starters[1] + " and " + starters[2];
-  if (starters.length === 4) return "discuss " + starters[0] + ", " + starters[1] + ", " + starters[2] + " and " + starters[3];
-  return "discuss " + starters.slice(0, -1).join(", ") + " and " + starters[starters.length - 1];
+  if (starters.length === 0) return "introduce yourselves";
+  if (starters.length === 1) return "talk about " + starters[0];
+  if (starters.length === 2) return "talk about " + starters[0] + " and " + starters[1];
+  if (starters.length === 3) return "talk about " + starters[0] + ", " + starters[1] + " and " + starters[2];
+  if (starters.length === 4) return "talk about " + starters[0] + ", " + starters[1] + ", " + starters[2] + " and " + starters[3];
+  return "talk about " + starters.slice(0, -1).join(", ") + " and " + starters[starters.length - 1];
 }
 
 export function buildConcreteMatchSummary(args: BuildSummaryArgs): string {
@@ -1132,7 +1135,7 @@ export function buildConcreteMatchSummary(args: BuildSummaryArgs): string {
 
     const sharedLikes = intersectCanonical(likesAIdx, likesBIdx, 3);
 
-    const preferenceClashes = pickPreferenceClashesDetailed(prefsA, prefsB, 2, 2);
+    const preferenceClashes = pickPreferenceClashesDetailed(prefsA, prefsB, 2, 4);
 
     const distanceKm = args.distanceKm;
 

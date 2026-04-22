@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getMutualMatches, getMessages, sendMessage, getProfile, revealProfile, createFlag, getUserById, getUnreadCount, markMessagesAsRead } from '@/lib/db';
+import { getMatchesForUser, getMessages, sendMessage, getProfile, revealProfile, createFlag, getUserById, getUnreadCount, markMessagesAsRead } from '@/lib/db';
 import { Match, Message, Profile, User } from '@/lib/types';
 
 function getCookie(name: string): string | null {
@@ -17,26 +17,30 @@ interface EnrichedMatch extends Match {
   unreadCount?: number;
 }
 
+interface OpenChat {
+  matchId: string;
+  messages: Message[];
+  newMessage: string;
+  showProfileInfo: boolean;
+  unread: number;
+  reporting: boolean;
+  reportComment: string;
+  closing: boolean;
+}
+
 export default function Messages() {
   const [userId, setUserId] = useState<string | null>(null);
   const [matches, setMatches] = useState<EnrichedMatch[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [openChats, setOpenChats] = useState<Map<string, OpenChat>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [revealing, setRevealing] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
-  const [reporting, setReporting] = useState(false);
-  const [reportComment, setReportComment] = useState('');
-  const [reportSent, setReportSent] = useState(false);
-  const [showProfileInfo, setShowProfileInfo] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const msgEndRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const loadMatches = async (uid: string) => {
-    const mutual = await getMutualMatches(uid);
+    const all = await getMatchesForUser(uid);
     const enriched: EnrichedMatch[] = await Promise.all(
-      mutual.map(async (m) => {
+      all.map(async (m) => {
         const otherId = m.userA === uid ? m.userB : m.userA;
         const prof = await getProfile(otherId);
         const user = await getUserById(otherId);
@@ -71,215 +75,305 @@ export default function Messages() {
     return () => clearInterval(interval);
   }, [userId]);
 
-  async function selectMatch(matchId: string) {
-    setSelected(matchId);
-    setReportSent(false);
-    setReportComment('');
-    setShowProfileInfo(false);
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (userId) {
+        const updated = new Map(openChats);
+        for (const [matchId] of updated) {
+          const msgs = await getMessages(matchId);
+          const chat = updated.get(matchId);
+          if (chat) {
+            updated.set(matchId, { ...chat, messages: msgs });
+            const prevUnread = chat.unread;
+            if (prevUnread > 0) {
+              await markMessagesAsRead(matchId, userId!);
+              updated.set(matchId, { ...updated.get(matchId)!, unread: 0 });
+            }
+          }
+        }
+        setOpenChats(new Map(updated));
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [userId, openChats]);
+
+  async function openChat(matchId: string) {
     const msgs = await getMessages(matchId);
-    setMessages(msgs);
-    if (userId) {
+    const match = matches.find(m => m.id === matchId);
+    const unread = match?.unreadCount || 0;
+    if (unread > 0 && userId) {
       await markMessagesAsRead(matchId, userId);
       await loadMatches(userId);
     }
+    setOpenChats(new Map([[matchId, { matchId, messages: msgs, newMessage: '', showProfileInfo: false, unread: 0, reporting: false, reportComment: '', closing: false }]]));
   }
 
-  useEffect(() => {
-    if (selected) {
-      const interval = setInterval(async () => {
-        const msgs = await getMessages(selected);
-        setMessages(msgs);
-        if (userId) {
-          await loadMatches(userId);
-        }
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [selected, userId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selected || !userId || !newMessage.trim()) return;
-    await sendMessage(selected, userId, newMessage.trim());
-    const msgs = await getMessages(selected);
-    setMessages(msgs);
-    setNewMessage('');
+  function closeChat(matchId: string) {
+    updateChatField(matchId, 'closing', true);
+    setTimeout(() => {
+      setOpenChats(prev => {
+        const next = new Map(prev);
+        next.delete(matchId);
+        return next;
+      });
+    }, 200);
   }
 
-  async function handleRevealProfile() {
-    if (!selected || !userId) return;
-    setRevealing(true);
-    await revealProfile(selected, userId);
-    const enriched = await loadMatches(userId);
-    setSelected(enriched.find(m => m.id === selected)?.id || null);
-    setRevealing(false);
+  function updateChatField(matchId: string, field: keyof OpenChat, value: unknown) {
+    setOpenChats(prev => {
+      const next = new Map(prev);
+      const chat = next.get(matchId);
+      if (chat) next.set(matchId, { ...chat, [field]: value });
+      return next;
+    });
   }
 
-  async function handleReport() {
-    if (!selected || !userId) return;
-    const match = matches.find(m => m.id === selected);
-    if (!match) return;
-    const otherId = match.userA === userId ? match.userB : match.userA;
-    if (reportComment.trim().length < 50) return;
+  async function handleSend(matchId: string) {
+    const chat = openChats.get(matchId);
+    if (!chat || !userId || !chat.newMessage.trim()) return;
+    await sendMessage(matchId, userId, chat.newMessage.trim());
+    const msgs = await getMessages(matchId);
+    updateChatField(matchId, 'messages', msgs);
+    updateChatField(matchId, 'newMessage', '');
+  }
+
+  async function handleRevealProfile(matchId: string) {
+    if (!userId) return;
+    await revealProfile(matchId, userId);
+    await loadMatches(userId);
+  }
+
+  async function handleReport(matchId: string, otherId: string, reportComment: string) {
+    if (!userId || reportComment.trim().length < 50) return;
     await createFlag(userId, otherId, reportComment.trim());
-    setReportSent(true);
-    setReporting(false);
-    setReportComment('');
+    await loadMatches(userId);
   }
+
+  useEffect(() => {
+    for (const [, chat] of openChats) {
+      const el = msgEndRefs.current.get(chat.matchId);
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [openChats]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
-        <Nav userRole={userRole} unreadMessages={matches.reduce((sum, m) => sum + (m.unreadCount || 0), 0)} />
-        <div className="container-main"><p>Loading...</p></div>
+      <div className="min-h-screen min-h-100dvh bg-white flex flex-col">
+        <Nav userRole={userRole} unreadMessages={matches.filter(m => m.statusA === 'match' && m.statusB === 'match').reduce((sum, m) => sum + (m.unreadCount || 0), 0)} />
+        <div className="flex-1 flex items-center justify-center">
+          <p>Loading...</p>
+        </div>
       </div>
     );
   }
 
-  const currentMatch = matches.find(m => m.id === selected);
-  const bothRevealed = currentMatch?.profileRevealedA && currentMatch?.profileRevealedB;
-  const iRevealed = currentMatch ? (currentMatch.userA === userId ? currentMatch.profileRevealedA : currentMatch.profileRevealedB) : false;
-
   return (
-    <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} unreadMessages={matches.reduce((sum, m) => sum + (m.unreadCount || 0), 0)} />
-      <div className="container-main">
-        <h1 className="headline text-3xl font-bold mb-4">Messages</h1>
+    <div className="min-h-screen min-h-100dvh bg-white flex flex-col relative">
+      <Nav userRole={userRole} unreadMessages={matches.filter(m => m.statusA === 'match' && m.statusB === 'match').reduce((sum, m) => sum + (m.unreadCount || 0), 0)} />
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="px-6 pt-4 shrink-0">
+          <h1 className="headline text-3xl font-bold mb-4">Messages</h1>
+        </div>
         {matches.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {matches.map(m => (
-              <button
-                key={m.id}
-                onClick={() => selectMatch(m.id)}
-                className="px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-                style={{
-                  background: selected === m.id ? '#90c367' : '#f3f4f6',
-                  color: selected === m.id ? 'white' : '#111',
-                  border: '1px solid ' + (selected === m.id ? '#90c367' : '#e5e7eb')
-                }}
-              >
-                <span>{m.otherProfile?.displayName || 'User'}</span>
-                {m.unreadCount && m.unreadCount > 0 && (
-                  <span className="rounded-full px-1.5 py-0.5 text-xs font-bold" style={{ background: '#f97316', color: 'white' }}>
-                    {m.unreadCount > 99 ? '99+' : m.unreadCount}
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2 mb-4 px-6 shrink-0">
+            {matches.filter(m => m.statusA === 'match' && m.statusB === 'match').map(m => {
+              const isMutual = true;
+              const isOpen = openChats.has(m.id);
+              const unread = m.unreadCount || 0;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => openChat(m.id)}
+                  className="px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                  style={{
+                    background: isOpen ? '#90c367' : '#dcfce7',
+                    color: isOpen ? 'white' : '#166534',
+                    border: '1px solid ' + (isOpen ? '#90c367' : '#86efac')
+                  }}
+                >
+                  <span>{m.otherProfile?.displayName || 'User'}</span>
+                  {unread > 0 && !isOpen && (
+                    <span className="rounded-full px-1.5 py-0.5 text-xs font-bold" style={{ background: '#f97316', color: 'white' }}>
+                      {unread > 99 ? '99+' : unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
-        <div className="card" style={{ height: 'calc(70vh - 80px)' }}>
-          {!selected ? (
-            <div className="flex items-center justify-center h-full">
-              <p style={{ color: '#666' }}>Select a conversation to start chatting</p>
-            </div>
-          ) : (
-            <div className="flex flex-col h-full">
-              {currentMatch?.otherProfile && (
-                <div className="p-3 flex flex-col" style={{ background: '#90c367' }}>
-                  <div className="flex justify-between items-center flex-wrap gap-2">
-                    <div>
-                      <p className="font-bold text-lg" style={{ color: 'white' }}>{currentMatch.otherProfile.displayName}</p>
-                      <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                        {currentMatch.otherProfile.location && `${currentMatch.otherProfile.location} · `}
-                        Age {currentMatch.otherProfile.age}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      {!iRevealed && (
-                        <button className="text-xs px-3 py-2 rounded-lg font-medium" onClick={handleRevealProfile} disabled={revealing} style={{ background: 'white', color: '#166534' }}>
-                          {revealing ? 'Revealing...' : 'Disclose Full Profile'}
-                        </button>
-                      )}
-                      {bothRevealed && (
-                        <span className="text-xs" style={{ color: 'white' }}>✓ Profiles Shared</span>
-                      )}
-                      {!bothRevealed && iRevealed && (
-                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>Waiting...</span>
-                      )}
-                      {!reporting && !reportSent && (
-                        <button
-                          className="text-xs px-2 py-1 rounded border"
-                          style={{ borderColor: 'white', color: 'white', background: 'transparent' }}
-                          onClick={() => setReporting(true)}
-                        >
-                          Report
-                        </button>
-                      )}
-                      {reportSent && (
-                        <span className="text-xs" style={{ color: 'white' }}>✓ Sent</span>
-                      )}
-                    </div>
+        <div className="flex-1 flex items-center justify-center px-6 pb-6 min-h-0">
+          {matches.filter(m => m.statusA === 'match' && m.statusB === 'match').length === 0 && (
+            <p style={{ color: '#666' }}>No matches yet. Keep exploring the Matching Playground!</p>
+          )}
+          {matches.filter(m => m.statusA === 'match' && m.statusB === 'match').length > 0 && openChats.size === 0 && (
+            <p style={{ color: '#666' }}>Select a conversation above to start chatting</p>
+          )}
+        </div>
+      </div>
+
+      {Array.from(openChats.entries()).map(([matchId, chat]) => {
+        const match = matches.find(m => m.id === matchId);
+        if (!match || !match.otherProfile) return null;
+        const prof = match.otherProfile;
+        const isMutual = match.statusA === 'match' && match.statusB === 'match';
+        const bothRevealed = match.profileRevealedA && match.profileRevealedB;
+        const iRevealed = match.userA === userId ? match.profileRevealedA : match.profileRevealedB;
+        const headerBg = isMutual ? '#90c367' : '#9ca3af';
+        const otherId = match.userA === userId ? match.userB : match.userA;
+        return (
+          <div
+            key={matchId}
+            className="fixed bottom-4 right-4 z-50 card flex flex-col transition-all duration-200"
+            style={{
+              width: '340px',
+              maxHeight: '480px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+              opacity: chat.closing ? 0 : 1,
+              transform: chat.closing ? 'scale(0.95)' : 'scale(1)',
+            }}
+          >
+            <div className="p-3 flex flex-col gap-2 shrink-0" style={{ background: headerBg }}>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm truncate" style={{ color: 'white' }}>{prof.displayName}</p>
+                  <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                    {prof.location && `${prof.location} · `}{prof.age}
+                  </p>
+                </div>
+                <div className="flex gap-1 items-center shrink-0">
+                  {!iRevealed && (
+                    <button
+                      className="text-xs px-2 py-1 rounded font-medium"
+                      style={{ background: 'white', color: '#166534' }}
+                      onClick={() => handleRevealProfile(matchId)}
+                    >
+                      Reveal full profile
+                    </button>
+                  )}
+                  {bothRevealed && (
+                    <span className="text-xs font-medium" style={{ color: 'white' }}>Full profile revealed</span>
+                  )}
+                  {!chat.reporting ? (
+                    <button
+                      className="text-xs px-2 py-1 rounded border font-medium"
+                      style={{ borderColor: 'white', color: 'white', background: 'transparent' }}
+                      onClick={() => updateChatField(matchId, 'reporting', true)}
+                    >
+                      Report
+                    </button>
+                  ) : null}
+                  <button
+                    title="Close Chat"
+                    className="text-lg font-bold leading-none"
+                    style={{ color: '#ef4444' }}
+                    onClick={() => closeChat(matchId)}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              {chat.reporting && (
+                <div className="p-2 rounded" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
+                  <p className="text-xs mb-1 font-medium" style={{ color: '#EF4444' }}>Report (50+ chars required):</p>
+                  <textarea
+                    className="input bg-white w-full text-xs"
+                    value={chat.reportComment}
+                    onChange={e => updateChatField(matchId, 'reportComment', e.target.value)}
+                    rows={2}
+                    placeholder="Describe the issue..."
+                  />
+                  <div className="flex gap-1 mt-1">
+                    <button
+                      className="btn-danger text-xs"
+                      disabled={chat.reportComment.trim().length < 50}
+                      onClick={async () => {
+                        await handleReport(matchId, otherId, chat.reportComment);
+                        updateChatField(matchId, 'reporting', false);
+                        updateChatField(matchId, 'reportComment', '');
+                      }}
+                    >
+                      Send Report
+                    </button>
+                    <button
+                      className="btn-secondary text-xs"
+                      onClick={() => {
+                        updateChatField(matchId, 'reporting', false);
+                        updateChatField(matchId, 'reportComment', '');
+                      }}
+                    >
+                      Cancel
+                    </button>
                   </div>
-                  {reporting && (
-                    <div className="mt-3 p-3 rounded text-xs" style={{ background: '#fef2f2', border: '1px solid #EF4444' }}>
-                      <p className="mb-1 font-medium" style={{ color: '#EF4444' }}>Report (50+ chars):</p>
-                      <textarea
-                        className="input bg-white w-full text-xs"
-                        value={reportComment}
-                        onChange={e => setReportComment(e.target.value)}
-                        rows={2}
-                      />
-                      <div className="flex gap-1 mt-1">
-                        <button className="btn-danger text-xs" onClick={handleReport} disabled={reportComment.trim().length < 50}>Send</button>
-                        <button className="btn-secondary text-xs" onClick={() => { setReporting(false); setReportComment(''); }}>×</button>
-                      </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              {bothRevealed && (
+                <div
+                  className="px-3 py-2 border-b cursor-pointer shrink-0"
+                  style={{ borderColor: '#e5e5e5', backgroundColor: chat.showProfileInfo ? '#f0fdf4' : 'var(--color-secondary)' }}
+                  onClick={() => updateChatField(matchId, 'showProfileInfo', !chat.showProfileInfo)}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium" style={{ color: chat.showProfileInfo ? '#166534' : 'white' }}>Profile Info</span>
+                    <span style={{ color: chat.showProfileInfo ? '#666' : 'rgba(255,255,255,0.8)', fontSize: '10px' }}>{chat.showProfileInfo ? '▲' : '▼'}</span>
+                  </div>
+                  {chat.showProfileInfo && (
+                    <div className="mt-2 p-2 rounded text-xs" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+                      <div><span className="font-medium">Bio:</span> {prof.bio || 'No bio'}</div>
+                      <div><span className="font-medium">Looking for:</span> {prof.friendSex} friends, age {prof.friendMinAge}-{prof.friendMaxAge}</div>
+                      <div><span className="font-medium">Location:</span> {prof.location || 'Unknown'}</div>
+                      <div><span className="font-medium">Max Distance:</span> {prof.maxDistance} km</div>
                     </div>
                   )}
                 </div>
               )}
-              <div className="flex-1 flex flex-col">
-                {bothRevealed && (
-                  <div className="p-3 border-b cursor-pointer hover:bg-gray-50" style={{ borderColor: '#e5e5e5' }} onClick={() => setShowProfileInfo(!showProfileInfo)}>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium" style={{ color: '#166534' }}>Full Profile Info</span>
-                      <span style={{ color: '#666' }}>{showProfileInfo ? '▲' : '▼'}</span>
-                    </div>
-                    {showProfileInfo && (
-                      <div className="mt-2 p-3 rounded-lg" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="font-medium">Bio:</span> {currentMatch.otherProfile?.bio || 'No bio'}</div>
-                          <div><span className="font-medium">Looking for:</span> {currentMatch.otherProfile?.friendSex} friends, age {currentMatch.otherProfile?.friendMinAge}-{currentMatch.otherProfile?.friendMaxAge}</div>
-                          <div><span className="font-medium">Location:</span> {currentMatch.otherProfile?.location || 'Unknown'}</div>
-                          <div><span className="font-medium">Max Distance:</span> {currentMatch.otherProfile?.maxDistance} km</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+                {chat.messages.length === 0 && (
+                  <p className="text-center text-xs" style={{ color: '#666' }}>No messages yet. Say hello!</p>
                 )}
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                  {messages.length === 0 && (
-                    <p className="text-center text-sm" style={{ color: '#666' }}>No messages yet. Say hello!</p>
-                  )}
-                  {messages.map(msg => (
-                    <div key={msg.id} className="flex" style={{ justifyContent: msg.senderId === userId ? 'flex-end' : 'flex-start' }}>
-                      <span className="inline-block px-4 py-2 rounded-xl max-w-xs" style={{ background: msg.senderId === userId ? '#90c367' : '#e5e5e5', color: msg.senderId === userId ? 'white' : '#111' }}>
-                        {msg.content}
-                      </span>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-                <form onSubmit={handleSend} className="p-4 border-t" style={{ borderColor: '#e5e5e5' }}>
-                  <div className="flex gap-2">
-                    <input
-                      className="input flex-1"
-                      value={newMessage}
-                      onChange={e => setNewMessage(e.target.value)}
-                      placeholder="Type a message..."
-                    />
-                    <button type="submit" className="btn-primary">Send</button>
+                {chat.messages.map(msg => (
+                  <div key={msg.id} className="flex" style={{ justifyContent: msg.senderId === userId ? 'flex-end' : 'flex-start' }}>
+                    <span
+                      className="inline-block px-3 py-1.5 rounded-xl text-xs max-w-xs"
+                      style={{
+                        background: msg.senderId === userId ? '#90c367' : '#e5e5e5',
+                        color: msg.senderId === userId ? 'white' : '#111',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {msg.content}
+                    </span>
                   </div>
-                </form>
+                ))}
+                <div ref={el => { if (el) msgEndRefs.current.set(matchId, el); }} />
               </div>
+              <form
+                onSubmit={e => { e.preventDefault(); handleSend(matchId); }}
+                className="p-3 border-t shrink-0"
+                style={{ borderColor: '#e5e5e5' }}
+              >
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', padding: '12px', borderTop: '1px solid #e5e5e5' }}>
+                  <input
+                    style={{ flex: 1, height: '32px', padding: '0 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid #d1d5db', outline: 'none' }}
+                    value={chat.newMessage}
+                    onChange={e => updateChatField(matchId, 'newMessage', e.target.value)}
+                    placeholder="Message..."
+                  />
+                  <button
+                    type="submit"
+                    style={{ height: '32px', padding: '0 12px', fontSize: '12px', borderRadius: '6px', border: 'none', backgroundColor: '#90c367', color: 'white', cursor: 'pointer' }}
+                  >
+                    Send
+                  </button>
+                </div>
+              </form>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

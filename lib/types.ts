@@ -6,9 +6,12 @@ export interface Profile {
   location: string;
   latitude?: number;
   longitude?: number;
-  friendSex: 'Male' | 'Female' | 'Non-Binary';
+  gender: 'male' | 'female' | 'nonbinary';
+  genderFilter: 'all' | 'male' | 'female';
+  ageFilter: 'all' | 'specific';
   friendMinAge: number;
   friendMaxAge: number;
+  distanceFilter: 'all' | 'specific';
   maxDistance: number;
 }
 

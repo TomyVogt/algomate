@@ -45,7 +45,7 @@ export async function createUser(email: string, password: string, role: User['ro
   setStore(USERS, users);
 
   const profiles = getStore<Profile>(PROFILES);
-  profiles.push({ userId: user.id, displayName: '', age: 0, bio: '', location: '', friendSex: 'Male', friendMinAge: 18, friendMaxAge: 99, maxDistance: 150 });
+  profiles.push({ userId: user.id, displayName: '', age: 0, bio: '', location: '', gender: 'male', genderFilter: 'all', ageFilter: 'all', friendMinAge: 18, friendMaxAge: 99, distanceFilter: 'all', maxDistance: 150 });
   setStore(PROFILES, profiles);
 
   return user;
@@ -139,12 +139,22 @@ export async function getMessages(matchId: string): Promise<Message[]> {
 }
 
 export async function getUnreadCount(matchId: string, userId: string): Promise<number> {
-  await initDB();
+  if (typeof window === 'undefined') return 0;
   const lastReadKey = `algomate_lastread_${matchId}_${userId}`;
   const lastRead = localStorage.getItem(lastReadKey);
   const lastReadTime = lastRead ? parseInt(lastRead) : 0;
   const messages = getStore<Message>(MESSAGES);
   return messages.filter(m => m.matchId === matchId && m.senderId !== userId && m.createdAt > lastReadTime).length;
+}
+
+export async function getTotalUnreadCount(userId: string): Promise<number> {
+  const matches = await getMatchesForUser(userId);
+  const mutualMatches = matches.filter(m => m.statusA === 'match' && m.statusB === 'match');
+  let total = 0;
+  for (const match of mutualMatches) {
+    total += await getUnreadCount(match.id, userId);
+  }
+  return total;
 }
 
 export async function markMessagesAsRead(matchId: string, userId: string): Promise<void> {

@@ -47,6 +47,8 @@ export function calculateCompatibility(profileA: Profile, profileB: Profile): nu
 }
 
 function calculateAgePreferenceScore(profileA: Profile, profileB: Profile): number {
+  if (profileA.ageFilter !== 'specific' && profileB.ageFilter !== 'specific') return 2;
+  if (profileA.ageFilter !== 'specific' || profileB.ageFilter !== 'specific') return 1;
   const aInBsRange = profileB.friendMinAge <= profileA.age && profileA.age <= profileB.friendMaxAge;
   const bInAsRange = profileA.friendMinAge <= profileB.age && profileB.age <= profileA.friendMaxAge;
   if (aInBsRange && bInAsRange) return 2;
@@ -54,8 +56,32 @@ function calculateAgePreferenceScore(profileA: Profile, profileB: Profile): numb
   return 0;
 }
 
+export function shouldAppearInPlayground(myProfile: Profile, otherProfile: Profile): boolean {
+  if (myProfile.genderFilter === 'male' && otherProfile.gender !== 'male') {
+    return false;
+  }
+  if (myProfile.genderFilter === 'female' && otherProfile.gender !== 'female') {
+    return false;
+  }
+
+  if (myProfile.ageFilter === 'specific') {
+    if (otherProfile.age < myProfile.friendMinAge || otherProfile.age > myProfile.friendMaxAge) {
+      return false;
+    }
+  }
+
+  if (myProfile.distanceFilter === 'specific' && myProfile.latitude && myProfile.longitude && otherProfile.latitude && otherProfile.longitude) {
+    const distance = calculateDistance(myProfile.latitude, myProfile.longitude, otherProfile.latitude, otherProfile.longitude);
+    if (distance > myProfile.maxDistance) return false;
+  }
+
+  return true;
+}
+
 function calculateSexPreferenceScore(profileA: Profile, profileB: Profile): number {
-  return 1;
+  if (profileA.genderFilter === 'all' || profileB.genderFilter === 'all') return 2;
+  if (profileA.gender === profileB.gender) return 2;
+  return 0;
 }
 
 function calculateDistanceScore(profileA: Profile, profileB: Profile): number {
@@ -102,11 +128,13 @@ export function generateComparison(profileA: Profile, profileB: Profile) {
     age: { a: profileA.age, b: profileB.age },
     location: { a: profileA.location, b: profileB.location },
     bio: { a: profileA.bio, b: profileB.bio },
-    friendSex: { a: profileA.friendSex, b: profileB.friendSex },
+    gender: { a: profileA.gender, b: profileB.gender },
+    genderFilter: { a: profileA.genderFilter, b: profileB.genderFilter },
     friendAgeRange: {
-      a: `${profileA.friendMinAge}-${profileA.friendMaxAge}`,
-      b: `${profileB.friendMinAge}-${profileB.friendMaxAge}`,
+      a: profileA.ageFilter === 'all' ? 'Any age' : `${profileA.friendMinAge}-${profileA.friendMaxAge}`,
+      b: profileB.ageFilter === 'all' ? 'Any age' : `${profileB.friendMinAge}-${profileB.friendMaxAge}`,
     },
+    distanceFilter: { a: profileA.distanceFilter, b: profileB.distanceFilter },
     maxDistance: { a: profileA.maxDistance, b: profileB.maxDistance },
     ageDifference: Math.abs(profileA.age - profileB.age),
     bioOverlap: calculateBioOverlap(profileA.bio, profileB.bio),

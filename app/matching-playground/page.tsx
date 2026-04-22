@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { verifyToken } from '@/lib/auth';
-import { getProfile, getMatchesForUser, createMatchWithMutualCheck, createMatch, updateMatchStatus, createFlag, getAllUsersWithProfiles, getMutualMatches } from '@/lib/db';
-import { calculateCompatibility, generateComparison } from '@/lib/compatibility';
+import { getProfile, getMatchesForUser, createMatchWithMutualCheck, createMatch, updateMatchStatus, createFlag, getAllUsersWithProfiles, getMutualMatches, getTotalUnreadCount } from '@/lib/db';
+import { calculateCompatibility, generateComparison, shouldAppearInPlayground } from '@/lib/compatibility';
 import { Profile, Match } from '@/lib/types';
 
 function getCookie(name: string): string | null {
@@ -29,6 +29,8 @@ export default function MatchingPlayground() {
   const [userRole, setUserRole] = useState<string>('');
   const [showMatchNotification, setShowMatchNotification] = useState(false);
   const [matchedWithName, setMatchedWithName] = useState('');
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [newPlaygroundCount, setNewPlaygroundCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -55,16 +57,23 @@ export default function MatchingPlayground() {
 
       const mutual = await getMutualMatches(payload.userId);
       setMutualMatches(mutual);
+
+      const unread = await getTotalUnreadCount(payload.userId);
+      setUnreadMessages(unread);
+
       setLoading(false);
     }
     load();
   }, [router]);
 
-  async function loadNextComparison() {
-    const remaining = allUsers.filter(u => {
-      const hasMutual = mutualMatches.find(m => m.userA === u.id || m.userB === u.id);
-      return !hasMutual;
+  function loadNextComparison(users: Array<{ id: string; profile: Profile }>, userMatches: Match[]) {
+    const remaining = users.filter(u => {
+      const hasAnyMatch = userMatches.find(m => m.userA === u.id || m.userB === u.id);
+      if (hasAnyMatch) return false;
+      if (!myProfile) return false;
+      return shouldAppearInPlayground(myProfile, u.profile);
     });
+    setNewPlaygroundCount(remaining.length);
     if (!remaining.length) { setOtherProfile(null); setScore(null); setComparison(null); return; }
 
     const next = remaining[0];
@@ -77,8 +86,8 @@ export default function MatchingPlayground() {
   }
 
   useEffect(() => {
-    if (myProfile && allUsers.length) loadNextComparison();
-  }, [myProfile, allUsers.length]);
+    if (myProfile && allUsers.length) loadNextComparison(allUsers, matches);
+  }, [myProfile, allUsers.length, matches.length]);
 
   useEffect(() => {
     if (!userId) return;
@@ -120,6 +129,7 @@ export default function MatchingPlayground() {
     const users = await getAllUsersWithProfiles(userId);
     setAllUsers(users);
     setProcessing(false);
+    loadNextComparison(users, updated);
   }
 
   async function handleFlag() {
@@ -132,14 +142,14 @@ export default function MatchingPlayground() {
 
   if (loading) return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} unreadMessages={0} />
+      <Nav userRole={userRole} unreadMessages={unreadMessages} newPlaygroundCount={newPlaygroundCount} />
       <div className="container-main"><p>Loading...</p></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-white">
-      <Nav userRole={userRole} unreadMessages={0} />
+      <Nav userRole={userRole} unreadMessages={unreadMessages} newPlaygroundCount={newPlaygroundCount} />
       {showMatchNotification && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
           <span className="text-xl">🎉</span>
