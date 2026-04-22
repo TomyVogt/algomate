@@ -180,6 +180,10 @@ export default function MatchingPlayground() {
 
             {comparison && (
               <div className="shared-section">
+                <p className="font-semibold mb-2">Compatibility Summary</p>
+                <div className="p-3 rounded-lg mb-3" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+                  <p className="text-sm" style={{ color: '#166534' }}>{comparison.matchSummary}</p>
+                </div>
                 <p className="font-semibold mb-2">How you compare</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="p-2 rounded" style={{ background: '#f3f4f6' }}>

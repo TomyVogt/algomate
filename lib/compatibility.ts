@@ -1,5 +1,8 @@
 import { Profile } from './types';
 import { calculateDistance } from './geo';
+import { buildConcreteMatchSummary } from './match-summary';
+
+export { buildConcreteMatchSummary };
 
 export function calculateCompatibility(profileA: Profile, profileB: Profile): number {
   let score = 0;
@@ -86,6 +89,14 @@ export function generateComparison(profileA: Profile, profileB: Profile) {
     );
   }
 
+  const matchSummary = buildConcreteMatchSummary({
+    bioA: profileA.bio || '',
+    bioB: profileB.bio || '',
+    nameA: profileA.displayName,
+    nameB: profileB.displayName,
+    distanceKm: distance,
+  });
+
   return {
     displayName: { a: profileA.displayName, b: profileB.displayName },
     age: { a: profileA.age, b: profileB.age },
@@ -100,6 +111,7 @@ export function generateComparison(profileA: Profile, profileB: Profile) {
     ageDifference: Math.abs(profileA.age - profileB.age),
     bioOverlap: calculateBioOverlap(profileA.bio, profileB.bio),
     distance,
+    matchSummary,
   };
 }
 
